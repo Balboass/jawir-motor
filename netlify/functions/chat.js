@@ -1,4 +1,3 @@
-// Netlify Functions have built-in fetch, no need to import
 const SYSTEM_PROMPT = `You are a friendly and helpful motorcycle mechanic assistant at JAWIR MOTOR, a professional motorcycle workshop.
 
 CONVERSATION FLOW (FOLLOW THIS ORDER):
@@ -41,7 +40,7 @@ Saya sangat menyarankan Bapak/Ibu untuk membawa motor ke bengkel JAWIR MOTOR. Me
 
 Always follow this pattern!`
 
-export async function handler(event) {
+exports.handler = async function(event, context) {
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
@@ -53,7 +52,7 @@ export async function handler(event) {
   try {
     const { messages } = JSON.parse(event.body)
 
-    // Get API key - Netlify Functions can access env vars with or without VITE_ prefix
+    // Get API key
     const apiKey = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY
 
     console.log('API Key exists:', !!apiKey)
@@ -114,7 +113,7 @@ export async function handler(event) {
     console.error('Server error:', error)
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' })
+      body: JSON.stringify({ error: 'Internal server error', details: error.message })
     }
   }
 }
