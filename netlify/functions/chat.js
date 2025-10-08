@@ -57,8 +57,11 @@ export async function handler(event) {
     // Get API key - Netlify Functions can access env vars with or without VITE_ prefix
     const apiKey = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY
 
+    console.log('API Key exists:', !!apiKey)
+    console.log('API Key prefix:', apiKey ? apiKey.substring(0, 7) : 'none')
+
     if (!apiKey) {
-      console.error('No API key found')
+      console.error('No API key found in environment variables')
       return {
         statusCode: 500,
         body: JSON.stringify({ error: 'API key not configured' })
@@ -86,11 +89,15 @@ export async function handler(event) {
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      console.error('OpenAI API Error:', errorData)
+      const errorData = await response.json().catch(() => ({}))
+      console.error('OpenAI API Error:', response.status, errorData)
       return {
         statusCode: response.status,
-        body: JSON.stringify({ error: errorData })
+        body: JSON.stringify({
+          error: 'OpenAI API Error',
+          details: errorData,
+          message: errorData.error?.message || 'Unknown error'
+        })
       }
     }
 
