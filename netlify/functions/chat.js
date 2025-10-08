@@ -1,5 +1,4 @@
-import fetch from 'node-fetch'
-
+// Netlify Functions have built-in fetch, no need to import
 const SYSTEM_PROMPT = `You are a friendly and helpful motorcycle mechanic assistant at JAWIR MOTOR, a professional motorcycle workshop.
 
 CONVERSATION FLOW (FOLLOW THIS ORDER):
