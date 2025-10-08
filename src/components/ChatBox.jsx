@@ -43,20 +43,20 @@ function ChatBox() {
     <div className="w-full max-w-4xl mx-auto">
       <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
         {/* Chat Header */}
-        <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-5 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-5 relative overflow-hidden">
           <div className="absolute inset-0 opacity-20">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -translate-y-16 translate-x-16"></div>
           </div>
           <div className="relative z-10">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
-                <svg className="w-7 h-7 text-orange-600" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-7 h-7 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
                 </svg>
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">AI Mechanic Assistant</h2>
-                <p className="text-sm text-orange-100">Online • Siap membantu 24/7</p>
+                <p className="text-sm text-blue-100">Online • Siap membantu 24/7</p>
               </div>
             </div>
           </div>
@@ -67,7 +67,7 @@ function ChatBox() {
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-md">
-                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-xl">
+                <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-xl">
                   <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                   </svg>
@@ -95,15 +95,15 @@ function ChatBox() {
                     {/* Avatar */}
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                       message.role === 'user'
-                        ? 'bg-gradient-to-br from-orange-500 to-red-500'
-                        : 'bg-gradient-to-br from-slate-700 to-slate-600 border-2 border-orange-500'
+                        ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                        : 'bg-gradient-to-br from-slate-700 to-slate-600 border-2 border-blue-500'
                     }`}>
                       {message.role === 'user' ? (
                         <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                         </svg>
                       ) : (
-                        <svg className="w-6 h-6 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
                         </svg>
                       )}
@@ -114,7 +114,7 @@ function ChatBox() {
                       <div
                         className={`px-4 py-3 rounded-2xl ${
                           message.role === 'user'
-                            ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-tr-none shadow-lg'
+                            ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-tr-none shadow-lg'
                             : 'bg-slate-800 text-gray-100 rounded-tl-none border border-slate-700 shadow-lg'
                         }`}
                       >
@@ -137,9 +137,9 @@ function ChatBox() {
                     </div>
                     <div className="bg-slate-800 px-6 py-4 rounded-2xl rounded-tl-none border border-slate-700">
                       <div className="flex space-x-2">
-                        <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce"></div>
-                        <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
                     </div>
                   </div>

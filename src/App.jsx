@@ -4,7 +4,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Hero Section with Motorcycle Theme */}
-      <header className="relative bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 overflow-hidden">
+      <header className="relative bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 overflow-hidden">
         {/* Decorative Elements */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-32 h-32 border-4 border-white rounded-full"></div>
@@ -17,14 +17,14 @@ function App() {
             <div className="relative">
               <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-2xl transform hover:scale-110 transition-transform duration-300">
                 <svg
-                  className="w-20 h-20 text-orange-600"
+                  className="w-20 h-20 text-blue-600"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
                   <path d="M5.5 19a3.5 3.5 0 100-7 3.5 3.5 0 000 7zm0-5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM18.5 19a3.5 3.5 0 100-7 3.5 3.5 0 000 7zm0-5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM20 8h-3.051l-.429-1.287A2 2 0 0014.619 5.5h-2.122l-1.015 1.523A1 1 0 0010.65 7.5H8.5L7 9.5 5 11l-.5 4.5h2.051a4.48 4.48 0 011.699-2.5H9.5l2-3h1.122l.743 2.229A2 2 0 0015.257 14h.693a4.48 4.48 0 011.699 2.5H20l.5-4.5-2-2-1.5-2z"/>
                 </svg>
               </div>
-              <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
+              <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-cyan-400 rounded-full flex items-center justify-center shadow-lg">
                 <span className="text-2xl">⚡</span>
               </div>
             </div>
@@ -35,13 +35,13 @@ function App() {
                 JAWIR MOTOR
               </h1>
               <div className="mt-3 flex items-center justify-center space-x-2">
-                <div className="h-1 w-12 bg-yellow-400"></div>
+                <div className="h-1 w-12 bg-cyan-400"></div>
                 <p className="text-white text-xl md:text-2xl font-semibold">
                   Bengkel Motor Profesional
                 </p>
-                <div className="h-1 w-12 bg-yellow-400"></div>
+                <div className="h-1 w-12 bg-cyan-400"></div>
               </div>
-              <p className="text-orange-100 mt-4 text-lg">
+              <p className="text-blue-100 mt-4 text-lg">
                 Service, Spare Part & Modifikasi
               </p>
             </div>
@@ -59,7 +59,7 @@ function App() {
       {/* Main Content - AI Chat */}
       <main className="container mx-auto px-4 py-12">
         <div className="mb-10 text-center">
-          <div className="inline-block bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-2 rounded-full font-semibold mb-4">
+          <div className="inline-block bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-2 rounded-full font-semibold mb-4">
             💬 Konsultasi Gratis
           </div>
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
@@ -84,7 +84,7 @@ function App() {
             {/* Location Info */}
             <div className="space-y-6">
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -97,7 +97,7 @@ function App() {
               </div>
 
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -109,7 +109,7 @@ function App() {
               </div>
 
               <div className="flex items-start space-x-4">
-                <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
@@ -140,7 +140,7 @@ function App() {
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <p className="text-gray-400">
-              &copy; 2025 <span className="text-orange-500 font-semibold">JAWIR MOTOR</span>. All rights reserved.
+              &copy; 2025 <span className="text-blue-500 font-semibold">JAWIR MOTOR</span>. All rights reserved.
             </p>
             <p className="text-gray-500 text-sm mt-2">
               Powered by AI Assistant
