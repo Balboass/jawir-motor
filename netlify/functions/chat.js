@@ -54,11 +54,22 @@ export async function handler(event) {
   try {
     const { messages } = JSON.parse(event.body)
 
+    // Get API key - Netlify Functions can access env vars with or without VITE_ prefix
+    const apiKey = process.env.VITE_OPENAI_API_KEY || process.env.OPENAI_API_KEY
+
+    if (!apiKey) {
+      console.error('No API key found')
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: 'API key not configured' })
+      }
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.VITE_OPENAI_API_KEY}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: 'gpt-3.5-turbo',
