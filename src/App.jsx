@@ -92,7 +92,7 @@ function App() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-lg mb-1">Alamat</h4>
-                  <p className="text-gray-300">[Alamat bengkel akan ditambahkan di sini]</p>
+                  <p className="text-gray-300">Jl. Raya Jati Makmur No.20, RT.001/RW.005<br />Jatimakmur, Kec. Pd. Gede<br />Kota Bekasi, Jawa Barat 17414</p>
                 </div>
               </div>
 
@@ -104,7 +104,7 @@ function App() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-lg mb-1">Jam Buka</h4>
-                  <p className="text-gray-300">[Jam operasional akan ditambahkan di sini]</p>
+                  <p className="text-gray-300">Sabtu: 10.00 - 17.00<br />Minggu - Jumat: Tutup</p>
                 </div>
               </div>
 
@@ -116,7 +116,9 @@ function App() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-lg mb-1">Kontak</h4>
-                  <p className="text-gray-300">[Nomor telepon akan ditambahkan di sini]</p>
+                  <p className="text-gray-300">
+                    <a href="tel:+6289696886340" className="hover:text-blue-400 transition-colors">0896-9688-6340</a>
+                  </p>
                 </div>
               </div>
             </div>
@@ -152,7 +154,7 @@ function App() {
         <div className="flex flex-wrap justify-center gap-4 max-w-2xl mx-auto">
           {/* WhatsApp */}
           <a
-            href="https://wa.me/6281234567890"
+            href="https://wa.me/6289696886340"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center space-x-3 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-4 rounded-xl hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-105 shadow-lg flex-1 min-w-[280px] justify-center"
