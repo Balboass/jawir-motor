@@ -104,7 +104,12 @@ function App() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-lg mb-1">Jam Buka</h4>
-                  <p className="text-gray-300">Sabtu: 10.00 - 17.00<br />Minggu - Jumat: Tutup</p>
+                  <p className="text-gray-300">
+                    Senin - Kamis: 10.00 - 17.00<br />
+                    Jumat: Tutup<br />
+                    Sabtu: 10.00 - 17.00<br />
+                    Minggu: 10.00 - 18.00
+                  </p>
                 </div>
               </div>
 
