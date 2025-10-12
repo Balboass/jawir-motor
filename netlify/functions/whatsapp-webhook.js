@@ -176,10 +176,8 @@ async function sendFonteMessage(phone, message, token, keepUnread = false) {
     countryCode: '62'
   }
 
-  // If keepUnread is true, add delay parameter to prevent auto-read
-  if (keepUnread) {
-    payload.delay = 1 // 1 second delay helps keep chat unread
-  }
+  // Note: keepUnread parameter available but delay may not be supported by Fonnte
+  // Keeping parameter for future use if Fonnte adds this feature
 
   const response = await fetch('https://api.fonnte.com/send', {
     method: 'POST',
