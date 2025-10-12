@@ -86,53 +86,9 @@ function isUselessMessage(message) {
 }
 
 // Helper: Check if message is just casual greeting (no motorcycle problem mentioned)
+// NOTE: This function is intentionally disabled - bot should respond to ALL greetings
 function isCasualGreeting(message) {
-  const text = message.trim().toLowerCase()
-
-  // List of generic casual greetings (NOT mechanic names)
-  const casualGreetings = [
-    'hai', 'halo', 'hello', 'hi', 'hei', 'hey',
-    'assalamualaikum', 'salam', 'selamat pagi', 'selamat siang',
-    'selamat sore', 'selamat malam', 'pagi', 'siang', 'sore', 'malam'
-  ]
-
-  // Mechanic name greetings - these SHOULD be answered by bot
-  const mechanicNames = [
-    'wir', 'jawir', 'bang jawir', 'bang wir',
-    'rom', 'muhtarom', 'bang muhtarom', 'bang rom',
-    'bang', 'bro', 'mas', 'pak', 'om', 'gan'
-  ]
-
-  // If message contains mechanic names, let BOT handle it (they're asking for help)
-  const hasMechanicName = mechanicNames.some(name => text.includes(name))
-  if (hasMechanicName) {
-    return false // Don't ignore, let bot respond
-  }
-
-  // If message is ONLY a generic greeting (no mechanic names), ignore it
-  if (casualGreetings.includes(text)) {
-    return true
-  }
-
-  // If message is very short and matches greeting pattern
-  if (text.length <= 15 && casualGreetings.some(greeting => text === greeting || text.startsWith(greeting + ' '))) {
-    // Check if there's actual problem keywords after the greeting
-    const problemKeywords = [
-      'motor', 'mobil', 'rusak', 'masalah', 'problem', 'susah', 'ga bisa',
-      'gak bisa', 'tidak bisa', 'mogok', 'mati', 'berisik', 'bunyi',
-      'bocor', 'rem', 'ban', 'oli', 'servis', 'service', 'perbaikan',
-      'honda', 'yamaha', 'suzuki', 'kawasaki', 'beat', 'vario', 'nmax',
-      'scoopy', 'mio', 'aerox', 'satria', 'ninja', 'pcx'
-    ]
-
-    const hasProblemContext = problemKeywords.some(keyword => text.includes(keyword))
-
-    // If no problem context, it's just a casual greeting
-    if (!hasProblemContext) {
-      return true
-    }
-  }
-
+  // Always return false - bot responds to all greetings (halo, hai, wir, bang, etc.)
   return false
 }
 
@@ -162,9 +118,10 @@ function isAskingLocation(message) {
 
   const locationKeywords = [
     'lokasi', 'alamat', 'dimana', 'where', 'location', 'address',
-    'sharelok', 'sherlok', 'shareloc', 'share lok', 'share loc',
-    'share location', 'gmaps', 'google maps', 'peta', 'map',
-    'tempat', 'ada dimana', 'dimna', 'di mana'
+    'sharelok', 'sherlok', 'shareloc', 'sharlok', 'serlok', 'serloc',
+    'share lok', 'share loc', 'share location', 'sherlock',
+    'gmaps', 'google maps', 'peta', 'map',
+    'tempat', 'ada dimana', 'dimna', 'di mana', 'adain', 'ada di'
   ]
 
   return locationKeywords.some(keyword => text.includes(keyword))
