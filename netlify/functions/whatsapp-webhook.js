@@ -77,6 +77,26 @@ function isUselessMessage(message) {
   return false
 }
 
+// Helper: Check if message contains bad words/harassment
+function isBadWordMessage(message) {
+  const text = message.toLowerCase()
+
+  // List of bad words to ignore
+  const badWords = [
+    'goblok', 'goblog', 'tolol', 'bodoh', 'idiot', 'anjing', 'asu',
+    'kontol', 'memek', 'ngentot', 'jancok', 'bangsat', 'bajingan',
+    'kampret', 'bego', 'dungu', 'sialan', 'tai', 'fuck', 'shit',
+    'bitch', 'asshole', 'damn', 'cunt', 'dick', 'pussy', 'ngehe',
+    'kampang', 'perek', 'pelacur', 'lonte', 'jablay', 'monyet',
+    'babi', 'anjir', 'anjrit', 'setan', 'keparat', 'kunyuk'
+  ]
+
+  // Check if any bad word is in the message
+  const hasBadWord = badWords.some(badWord => text.includes(badWord))
+
+  return hasBadWord
+}
+
 // Helper: Check if asking for location
 function isAskingLocation(message) {
   const text = message.toLowerCase()
@@ -250,6 +270,15 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 200,
         body: JSON.stringify({ status: 'ignored', reason: 'useless message' })
+      }
+    }
+
+    // Filter bad words / harassment
+    if (isBadWordMessage(customerMessage)) {
+      console.log('Bad word detected, ignoring:', customerMessage)
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'ignored', reason: 'harassment/bad words' })
       }
     }
 
