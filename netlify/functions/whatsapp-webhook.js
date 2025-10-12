@@ -59,12 +59,15 @@ exports.handler = async function(event, context) {
   try {
     const body = JSON.parse(event.body)
 
+    // Log the FULL webhook payload to see what Fonnte sends
+    console.log('FULL WEBHOOK PAYLOAD:', JSON.stringify(body, null, 2))
+
     // Extract data from Fonnte webhook
     const customerPhone = body.device || body.from
     const customerMessage = body.message || body.text
     const isFromMe = body.fromMe === true || body.from_me === true
 
-    console.log('Received webhook:', { customerPhone, customerMessage, isFromMe })
+    console.log('Extracted data:', { customerPhone, customerMessage, isFromMe })
 
     // Ignore messages from ourselves (when mechanic replies manually)
     if (isFromMe) {
