@@ -127,6 +127,22 @@ function isAskingLocation(message) {
   return locationKeywords.some(keyword => text.includes(keyword))
 }
 
+// Helper: Check if asking for operating hours
+function isAskingHours(message) {
+  const text = message.toLowerCase()
+
+  const hoursKeywords = [
+    'jam buka', 'jam tutup', 'jam operasional', 'jam kerja',
+    'buka jam', 'tutup jam', 'open hour', 'close hour', 'opening hour',
+    'buka kapan', 'tutup kapan', 'jam berapa', 'kapan buka', 'kapan tutup',
+    'hari apa buka', 'hari apa tutup', 'buka tidak', 'buka nggak',
+    'buka gak', 'tutup tidak', 'tutup nggak', 'tutup gak',
+    'jadwal buka', 'jadwal tutup', 'schedule', 'hours'
+  ]
+
+  return hoursKeywords.some(keyword => text.includes(keyword))
+}
+
 // Helper: Check if debt collection message
 function isDebtCollection(message) {
   const text = message.toLowerCase()
@@ -325,6 +341,27 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 200,
         body: JSON.stringify({ status: 'location request - waiting for manual' })
+      }
+    }
+
+    // INSTANT RESPONSE: Operating hours request
+    if (isAskingHours(customerMessage)) {
+      console.log('Operating hours request detected')
+      const hoursMessage = `⏰ *JAM BUKA JAWIR MOTOR:*
+
+📅 Minggu: 10.00 - 18.00
+📅 Senin: 10.00 - 17.00
+📅 Selasa: 10.00 - 17.00
+📅 Rabu: 10.00 - 17.00
+📅 Kamis: 10.00 - 17.00
+📅 Jumat: Tutup
+📅 Sabtu: 10.00 - 17.00
+
+_*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfirmasi._`
+      await sendFonteMessage(customerPhone, hoursMessage, fonntToken)
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'hours info sent' })
       }
     }
 
