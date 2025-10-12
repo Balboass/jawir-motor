@@ -44,7 +44,11 @@ Minggu: 10.00 - 18.00
 // Store conversation state
 const conversationHistory = {}
 const mechanicHandling = {} // Track which chats mechanic is handling
+const mechanicLastReply = {} // Track when mechanic last replied
 const pendingReplies = {} // Track delayed responses
+
+// 1 hour in milliseconds
+const MECHANIC_COOLDOWN = 60 * 60 * 1000 // 1 hour
 
 // Helper: Check if message is useless
 function isUselessMessage(message) {
@@ -168,7 +172,8 @@ exports.handler = async function(event, context) {
 
       if (command === '/bot on') {
         mechanicHandling[customerPhone] = false
-        console.log('Bot enabled for:', customerPhone)
+        delete mechanicLastReply[customerPhone]
+        console.log('Bot enabled immediately for:', customerPhone)
         return {
           statusCode: 200,
           body: JSON.stringify({ status: 'bot enabled' })
@@ -177,15 +182,16 @@ exports.handler = async function(event, context) {
 
       if (command === '/bot off') {
         mechanicHandling[customerPhone] = true
-        console.log('Bot disabled for:', customerPhone)
+        console.log('Bot disabled permanently for:', customerPhone)
         return {
           statusCode: 200,
           body: JSON.stringify({ status: 'bot disabled' })
         }
       }
 
-      // Mark as mechanic handling
-      mechanicHandling[customerPhone] = true
+      // Record when mechanic replied
+      mechanicLastReply[customerPhone] = Date.now()
+      console.log('Mechanic replied, bot paused for 1 hour')
 
       // Cancel any pending bot reply
       if (pendingReplies[customerPhone]) {
@@ -194,10 +200,11 @@ exports.handler = async function(event, context) {
         console.log('Cancelled pending bot reply')
       }
 
-      // Check if conversation ender
+      // Check if conversation ender - reduces cooldown to 5 minutes
       if (isConversationEnder(customerMessage)) {
-        mechanicHandling[customerPhone] = false
-        console.log('Conversation ended, bot can resume')
+        // Conversation ended, bot can resume after 5 minutes instead of 1 hour
+        mechanicLastReply[customerPhone] = Date.now() - (MECHANIC_COOLDOWN - 5 * 60 * 1000)
+        console.log('Conversation ended, bot can resume in 5 minutes')
       }
 
       return {
@@ -214,12 +221,34 @@ exports.handler = async function(event, context) {
       }
     }
 
-    // Check if mechanic is handling this customer
+    // Check if mechanic is handling this customer (permanently disabled)
     if (mechanicHandling[customerPhone]) {
-      console.log('Mechanic is handling this chat, bot stays quiet')
+      console.log('Bot permanently disabled for this chat')
       return {
         statusCode: 200,
-        body: JSON.stringify({ status: 'mechanic active' })
+        body: JSON.stringify({ status: 'bot disabled' })
+      }
+    }
+
+    // Check if within 1-hour cooldown after mechanic reply
+    if (mechanicLastReply[customerPhone]) {
+      const timeSinceReply = Date.now() - mechanicLastReply[customerPhone]
+      const cooldownRemaining = MECHANIC_COOLDOWN - timeSinceReply
+
+      if (cooldownRemaining > 0) {
+        const minutesRemaining = Math.ceil(cooldownRemaining / 60000)
+        console.log(`Bot paused, ${minutesRemaining} minutes remaining until bot can respond`)
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            status: 'cooldown',
+            minutesRemaining
+          })
+        }
+      } else {
+        // Cooldown expired, bot can respond again
+        delete mechanicLastReply[customerPhone]
+        console.log('Cooldown expired, bot can respond again')
       }
     }
 
