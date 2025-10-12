@@ -63,11 +63,20 @@ exports.handler = async function(event, context) {
     console.log('FULL WEBHOOK PAYLOAD:', JSON.stringify(body, null, 2))
 
     // Extract data from Fonnte webhook
-    const customerPhone = body.device || body.from
+    // Try different fields for customer phone: from, sender, number, phone
+    const customerPhone = body.from || body.sender || body.number || body.phone
     const customerMessage = body.message || body.text
     const isFromMe = body.fromMe === true || body.from_me === true
 
-    console.log('Extracted data:', { customerPhone, customerMessage, isFromMe })
+    // Device is YOUR number, not customer
+    const devicePhone = body.device
+
+    console.log('Extracted data:', {
+      customerPhone,
+      customerMessage,
+      isFromMe,
+      devicePhone
+    })
 
     // Ignore messages from ourselves (when mechanic replies manually)
     if (isFromMe) {
