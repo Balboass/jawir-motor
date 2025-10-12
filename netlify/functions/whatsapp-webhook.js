@@ -3,8 +3,13 @@
 
 const SYSTEM_PROMPT = `You are a friendly and helpful motorcycle mechanic assistant at JAWIR MOTOR, a professional motorcycle workshop.
 
+IMPORTANT: ONLY respond to messages about MOTORCYCLE PROBLEMS. If the customer is just saying casual greetings like "bang jawir", "wir", "bro", "halo", etc. WITHOUT mentioning any motorcycle problem, DO NOT engage - let the human mechanic handle casual chats.
+
 CONVERSATION FLOW (FOLLOW THIS ORDER):
-1. FIRST: Ask about the motorcycle type/brand/model (e.g., Honda Beat, Yamaha NMAX, Suzuki Satria, etc.)
+1. FIRST: Confirm they have a motorcycle problem, then ask about the motorcycle brand/model
+   - Valid brands: Honda, Yamaha, Suzuki, Kawasaki, TVS, Vespa, Piaggio
+   - Common models: Beat, Scoopy, Vario, PCX, NMAX, Aerox, Mio, Satria FU, Ninja, etc.
+   - If someone says "wir", "jawir", "bang" alone - IGNORE IT, it's just a greeting for the workshop owner
 2. SECOND: Ask clarifying questions about the specific problem:
    - Where exactly is the problem? (engine, brakes, electrical, etc.)
    - When does it happen? (starting, riding, braking, etc.)
@@ -20,6 +25,7 @@ IMPORTANT RULES:
 - NEVER give step-by-step DIY repair instructions
 - Always emphasize that motorcycle repairs need professional tools and expertise
 - Make customers understand that improper repairs can be dangerous or cause more damage
+- If someone mentions "Satria Lumba" or weird bike names, clarify: "Maksudnya Suzuki Satria FU ya? Atau motor apa?"
 
 Always follow this pattern!`
 
@@ -72,6 +78,45 @@ function isUselessMessage(message) {
   const hasOnlyEmojis = /^[\p{Emoji}\s]+$/u.test(text)
   if (hasOnlyEmojis) {
     return true
+  }
+
+  return false
+}
+
+// Helper: Check if message is just casual greeting (no motorcycle problem mentioned)
+function isCasualGreeting(message) {
+  const text = message.trim().toLowerCase()
+
+  // List of casual greetings that should be ignored (let mechanic handle)
+  const casualGreetings = [
+    'bang', 'bro', 'mas', 'pak', 'om', 'gan', 'wir', 'jawir',
+    'bang jawir', 'hai', 'halo', 'hello', 'hi', 'hei', 'hey',
+    'assalamualaikum', 'salam', 'selamat pagi', 'selamat siang',
+    'selamat sore', 'selamat malam', 'pagi', 'siang', 'sore', 'malam'
+  ]
+
+  // If message is ONLY a greeting (no additional context), ignore it
+  if (casualGreetings.includes(text)) {
+    return true
+  }
+
+  // If message is very short and matches greeting pattern
+  if (text.length <= 15 && casualGreetings.some(greeting => text === greeting || text.startsWith(greeting + ' '))) {
+    // Check if there's actual problem keywords after the greeting
+    const problemKeywords = [
+      'motor', 'mobil', 'rusak', 'masalah', 'problem', 'susah', 'ga bisa',
+      'gak bisa', 'tidak bisa', 'mogok', 'mati', 'berisik', 'bunyi',
+      'bocor', 'rem', 'ban', 'oli', 'servis', 'service', 'perbaikan',
+      'honda', 'yamaha', 'suzuki', 'kawasaki', 'beat', 'vario', 'nmax',
+      'scoopy', 'mio', 'aerox', 'satria', 'ninja', 'pcx'
+    ]
+
+    const hasProblemContext = problemKeywords.some(keyword => text.includes(keyword))
+
+    // If no problem context, it's just a casual greeting
+    if (!hasProblemContext) {
+      return true
+    }
   }
 
   return false
@@ -270,6 +315,15 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 200,
         body: JSON.stringify({ status: 'ignored', reason: 'useless message' })
+      }
+    }
+
+    // Filter casual greetings (let mechanic handle)
+    if (isCasualGreeting(customerMessage)) {
+      console.log('Casual greeting ignored (no problem mentioned):', customerMessage)
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'ignored', reason: 'casual greeting - let mechanic handle' })
       }
     }
 
