@@ -169,18 +169,25 @@ function isConversationEnder(message) {
 }
 
 // Helper: Send message via Fonnte
-async function sendFonteMessage(phone, message, token) {
+async function sendFonteMessage(phone, message, token, keepUnread = false) {
+  const payload = {
+    target: phone,
+    message: message,
+    countryCode: '62'
+  }
+
+  // If keepUnread is true, add delay parameter to prevent auto-read
+  if (keepUnread) {
+    payload.delay = 1 // 1 second delay helps keep chat unread
+  }
+
   const response = await fetch('https://api.fonnte.com/send', {
     method: 'POST',
     headers: {
       'Authorization': token,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      target: phone,
-      message: message,
-      countryCode: '62'
-    })
+    body: JSON.stringify(payload)
   })
 
   const data = await response.json().catch(() => ({}))
@@ -337,7 +344,7 @@ exports.handler = async function(event, context) {
     if (isAskingLocation(customerMessage)) {
       console.log('Location request detected, asking to wait')
       const waitMessage = 'Tunggu ya, nanti akan di-share lokasi nya 📍'
-      await sendFonteMessage(customerPhone, waitMessage, fonntToken)
+      await sendFonteMessage(customerPhone, waitMessage, fonntToken, true) // Keep unread
       return {
         statusCode: 200,
         body: JSON.stringify({ status: 'location request - waiting for manual' })
@@ -358,7 +365,7 @@ exports.handler = async function(event, context) {
 📅 Sabtu: 10.00 - 17.00
 
 _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfirmasi._`
-      await sendFonteMessage(customerPhone, hoursMessage, fonntToken)
+      await sendFonteMessage(customerPhone, hoursMessage, fonntToken, true) // Keep unread
       return {
         statusCode: 200,
         body: JSON.stringify({ status: 'hours info sent' })
@@ -369,7 +376,7 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
     if (isDebtCollection(customerMessage)) {
       console.log('Debt collection detected, auto-reject')
       const rejectMessage = '❌ Nomor ini dikelola oleh bot otomatis. Mohon jangan mengirim pesan penagihan di sini. Terima kasih.'
-      await sendFonteMessage(customerPhone, rejectMessage, fonntToken)
+      await sendFonteMessage(customerPhone, rejectMessage, fonntToken, false) // Mark as read (no need to check)
       return {
         statusCode: 200,
         body: JSON.stringify({ status: 'debt rejected' })
@@ -445,9 +452,9 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
           content: aiReply
         })
 
-        // Send reply
+        // Send reply (keep chat unread so mechanic can review)
         console.log('Sending AI reply to:', customerPhone)
-        await sendFonteMessage(customerPhone, aiReply, fonntToken)
+        await sendFonteMessage(customerPhone, aiReply, fonntToken, true) // Keep unread
 
       } catch (error) {
         console.error('Error in AI response:', error)
