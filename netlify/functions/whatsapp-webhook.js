@@ -280,6 +280,16 @@ exports.handler = async function(event, context) {
       }
     }
 
+    // Check if customer sent jawir88 (wants to disable bot for themselves)
+    if (customerMessage.trim().toLowerCase() === 'jawir88') {
+      blockedNumbers[customerPhone] = true
+      console.log('Customer sent jawir88, bot disabled forever for:', customerPhone)
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'customer disabled bot with jawir88' })
+      }
+    }
+
     // Check if number is permanently blocked (jawir88 command)
     if (blockedNumbers[customerPhone]) {
       console.log('Number is permanently blocked, ignoring all messages')
