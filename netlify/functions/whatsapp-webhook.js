@@ -458,12 +458,6 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
     // Function to generate and send AI response
     const sendAIResponse = async () => {
       try {
-        // Check if mechanic took over
-        if (mechanicHandling[customerPhone]) {
-          console.log('Mechanic took over, cancelling AI response')
-          return
-        }
-
         console.log('Generating AI response')
 
         // Initialize conversation history
