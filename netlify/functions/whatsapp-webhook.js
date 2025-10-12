@@ -1,5 +1,13 @@
-// WhatsApp Webhook - Smart Bot with Fonnte + OpenAI ChatGPT
-// Features: Smart filtering, instant responses, 2-min delay, mechanic detection
+// WhatsApp Webhook - Smart Bot with Fonnte + OpenAI ChatGPT + Supabase
+// Features: Smart filtering, instant responses, mechanic detection, database storage
+
+const { createClient } = require('@supabase/supabase-js')
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+)
 
 const SYSTEM_PROMPT = `You are a friendly and helpful motorcycle mechanic assistant at JAWIR MOTOR, a professional motorcycle workshop.
 
@@ -49,11 +57,8 @@ Minggu: 10.00 - 18.00
 
 📞 Kontak: 0896-9688-6340`
 
-// Store conversation state
+// Store conversation state (in-memory cache for performance)
 const conversationHistory = {}
-const mechanicHandling = {} // Track which chats mechanic is handling
-const mechanicLastReply = {} // Track when mechanic last replied
-const blockedNumbers = {} // Track permanently blocked numbers (jawir88 command)
 
 // 1 hour in milliseconds
 const MECHANIC_COOLDOWN = 60 * 60 * 1000 // 1 hour
@@ -228,8 +233,12 @@ exports.handler = async function(event, context) {
       const command = customerMessage?.trim().toLowerCase()
 
       if (command === '/bot on') {
-        mechanicHandling[customerPhone] = false
-        delete mechanicLastReply[customerPhone]
+        await supabase.from('bot_settings').upsert({
+          customer_phone: customerPhone,
+          bot_disabled: false,
+          last_manual_reply: null,
+          cooldown_until: null
+        })
         console.log('Bot enabled immediately for:', customerPhone)
         return {
           statusCode: 200,
@@ -238,7 +247,10 @@ exports.handler = async function(event, context) {
       }
 
       if (command === '/bot off') {
-        mechanicHandling[customerPhone] = true
+        await supabase.from('bot_settings').upsert({
+          customer_phone: customerPhone,
+          bot_disabled: true
+        })
         console.log('Bot disabled permanently for:', customerPhone)
         return {
           statusCode: 200,
@@ -247,7 +259,11 @@ exports.handler = async function(event, context) {
       }
 
       if (command === 'jawir88') {
-        blockedNumbers[customerPhone] = true
+        // Block number in database
+        await supabase.from('blocked_numbers').upsert({
+          phone_number: customerPhone,
+          blocked_by: 'mechanic'
+        })
         console.log('Number permanently blocked with jawir88 command:', customerPhone)
         return {
           statusCode: 200,
@@ -255,16 +271,24 @@ exports.handler = async function(event, context) {
         }
       }
 
-      // Record when mechanic replied
-      mechanicLastReply[customerPhone] = Date.now()
-      console.log('Mechanic replied, bot paused for 1 hour')
+      // Record when mechanic replied in database
+      const now = new Date()
+      let cooldownUntil
 
       // Check if conversation ender - reduces cooldown to 5 minutes
       if (isConversationEnder(customerMessage)) {
-        // Conversation ended, bot can resume after 5 minutes instead of 1 hour
-        mechanicLastReply[customerPhone] = Date.now() - (MECHANIC_COOLDOWN - 5 * 60 * 1000)
+        cooldownUntil = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
         console.log('Conversation ended, bot can resume in 5 minutes')
+      } else {
+        cooldownUntil = new Date(Date.now() + MECHANIC_COOLDOWN) // 1 hour
+        console.log('Mechanic replied, bot paused for 1 hour')
       }
+
+      await supabase.from('bot_settings').upsert({
+        customer_phone: customerPhone,
+        last_manual_reply: now.toISOString(),
+        cooldown_until: cooldownUntil.toISOString()
+      })
 
       return {
         statusCode: 200,
@@ -282,7 +306,10 @@ exports.handler = async function(event, context) {
 
     // Check if customer sent jawir88 (wants to disable bot for themselves)
     if (customerMessage.trim().toLowerCase() === 'jawir88') {
-      blockedNumbers[customerPhone] = true
+      await supabase.from('blocked_numbers').upsert({
+        phone_number: customerPhone,
+        blocked_by: 'customer'
+      })
       console.log('Customer sent jawir88, bot disabled forever for:', customerPhone)
       return {
         statusCode: 200,
@@ -290,8 +317,14 @@ exports.handler = async function(event, context) {
       }
     }
 
-    // Check if number is permanently blocked (jawir88 command)
-    if (blockedNumbers[customerPhone]) {
+    // Check if number is permanently blocked (jawir88 command) from database
+    const { data: blockedCheck } = await supabase
+      .from('blocked_numbers')
+      .select('phone_number')
+      .eq('phone_number', customerPhone)
+      .single()
+
+    if (blockedCheck) {
       console.log('Number is permanently blocked, ignoring all messages')
       return {
         statusCode: 200,
@@ -299,8 +332,15 @@ exports.handler = async function(event, context) {
       }
     }
 
-    // Check if mechanic is handling this customer (permanently disabled)
-    if (mechanicHandling[customerPhone]) {
+    // Check bot settings from database
+    const { data: botSettings } = await supabase
+      .from('bot_settings')
+      .select('*')
+      .eq('customer_phone', customerPhone)
+      .single()
+
+    // Check if bot is permanently disabled for this customer
+    if (botSettings && botSettings.bot_disabled) {
       console.log('Bot permanently disabled for this chat')
       return {
         statusCode: 200,
@@ -308,13 +348,13 @@ exports.handler = async function(event, context) {
       }
     }
 
-    // Check if within 1-hour cooldown after mechanic reply
-    if (mechanicLastReply[customerPhone]) {
-      const timeSinceReply = Date.now() - mechanicLastReply[customerPhone]
-      const cooldownRemaining = MECHANIC_COOLDOWN - timeSinceReply
+    // Check if within cooldown period after mechanic reply
+    if (botSettings && botSettings.cooldown_until) {
+      const cooldownUntil = new Date(botSettings.cooldown_until)
+      const now = new Date()
 
-      if (cooldownRemaining > 0) {
-        const minutesRemaining = Math.ceil(cooldownRemaining / 60000)
+      if (cooldownUntil > now) {
+        const minutesRemaining = Math.ceil((cooldownUntil - now) / 60000)
         console.log(`Bot paused, ${minutesRemaining} minutes remaining until bot can respond`)
         return {
           statusCode: 200,
@@ -324,8 +364,10 @@ exports.handler = async function(event, context) {
           })
         }
       } else {
-        // Cooldown expired, bot can respond again
-        delete mechanicLastReply[customerPhone]
+        // Cooldown expired, clear it from database
+        await supabase.from('bot_settings').update({
+          cooldown_until: null
+        }).eq('customer_phone', customerPhone)
         console.log('Cooldown expired, bot can respond again')
       }
     }
@@ -482,6 +524,17 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
         // Send reply (keep chat unread so mechanic can review)
         console.log('Sending AI reply to:', customerPhone)
         await sendFonteMessage(customerPhone, aiReply, fonntToken, true) // Keep unread
+
+        // Save conversation to database
+        await supabase.from('conversations').insert({
+          customer_phone: customerPhone,
+          customer_name: body.name || null,
+          message: customerMessage,
+          bot_reply: aiReply,
+          message_type: 'problem',
+          is_from_me: false
+        })
+        console.log('Conversation saved to database')
 
       } catch (error) {
         console.error('Error in AI response:', error)
