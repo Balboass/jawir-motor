@@ -154,23 +154,30 @@ exports.handler = async function(event, context) {
       }
     }
 
+    // Log what we're sending to Fonnte
+    const fonnePayload = {
+      target: customerPhone,
+      message: aiReply,
+      countryCode: '62'
+    }
+    console.log('Sending to Fonnte:', fonnePayload)
+
     const fonneResponse = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
       headers: {
         'Authorization': fonntToken,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        target: customerPhone,
-        message: aiReply,
-        countryCode: '62'
-      })
+      body: JSON.stringify(fonnePayload)
     })
 
+    const fonneData = await fonneResponse.json().catch(() => ({}))
+    console.log('Fonnte response status:', fonneResponse.status)
+    console.log('Fonnte response data:', fonneData)
+
     if (!fonneResponse.ok) {
-      const errorData = await fonneResponse.json().catch(() => ({}))
-      console.error('Fonnte API error:', fonneResponse.status, errorData)
-      throw new Error('Fonnte API error')
+      console.error('Fonnte API error:', fonneResponse.status, fonneData)
+      throw new Error(`Fonnte API error: ${JSON.stringify(fonneData)}`)
     }
 
     console.log('Reply sent successfully to:', customerPhone)
