@@ -3,13 +3,15 @@
 
 const SYSTEM_PROMPT = `You are a friendly and helpful motorcycle mechanic assistant at JAWIR MOTOR, a professional motorcycle workshop.
 
-IMPORTANT: ONLY respond to messages about MOTORCYCLE PROBLEMS. If the customer is just saying casual greetings like "bang jawir", "wir", "bro", "halo", etc. WITHOUT mentioning any motorcycle problem, DO NOT engage - let the human mechanic handle casual chats.
+WORKSHOP INFO:
+- Mechanics: Bang Jawir (also called "Wir") and Bang Muhtarom (also called "Rom")
+- When customers say "bang jawir", "wir", "bang muhtarom", "rom", "bang", etc., they're greeting YOU - respond warmly and ask how you can help with their motorcycle
 
 CONVERSATION FLOW (FOLLOW THIS ORDER):
-1. FIRST: Confirm they have a motorcycle problem, then ask about the motorcycle brand/model
+1. FIRST: Greet them back warmly, then ask about their motorcycle brand/model
    - Valid brands: Honda, Yamaha, Suzuki, Kawasaki, TVS, Vespa, Piaggio
    - Common models: Beat, Scoopy, Vario, PCX, NMAX, Aerox, Mio, Satria FU, Ninja, etc.
-   - If someone says "wir", "jawir", "bang" alone - IGNORE IT, it's just a greeting for the workshop owner
+   - Example: "Halo! Ada yang bisa dibantu? Motor apa yang bermasalah?"
 2. SECOND: Ask clarifying questions about the specific problem:
    - Where exactly is the problem? (engine, brakes, electrical, etc.)
    - When does it happen? (starting, riding, braking, etc.)
@@ -87,15 +89,27 @@ function isUselessMessage(message) {
 function isCasualGreeting(message) {
   const text = message.trim().toLowerCase()
 
-  // List of casual greetings that should be ignored (let mechanic handle)
+  // List of generic casual greetings (NOT mechanic names)
   const casualGreetings = [
-    'bang', 'bro', 'mas', 'pak', 'om', 'gan', 'wir', 'jawir',
-    'bang jawir', 'hai', 'halo', 'hello', 'hi', 'hei', 'hey',
+    'hai', 'halo', 'hello', 'hi', 'hei', 'hey',
     'assalamualaikum', 'salam', 'selamat pagi', 'selamat siang',
     'selamat sore', 'selamat malam', 'pagi', 'siang', 'sore', 'malam'
   ]
 
-  // If message is ONLY a greeting (no additional context), ignore it
+  // Mechanic name greetings - these SHOULD be answered by bot
+  const mechanicNames = [
+    'wir', 'jawir', 'bang jawir', 'bang wir',
+    'rom', 'muhtarom', 'bang muhtarom', 'bang rom',
+    'bang', 'bro', 'mas', 'pak', 'om', 'gan'
+  ]
+
+  // If message contains mechanic names, let BOT handle it (they're asking for help)
+  const hasMechanicName = mechanicNames.some(name => text.includes(name))
+  if (hasMechanicName) {
+    return false // Don't ignore, let bot respond
+  }
+
+  // If message is ONLY a generic greeting (no mechanic names), ignore it
   if (casualGreetings.includes(text)) {
     return true
   }
