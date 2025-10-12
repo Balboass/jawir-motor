@@ -53,6 +53,7 @@ Minggu: 10.00 - 18.00
 const conversationHistory = {}
 const mechanicHandling = {} // Track which chats mechanic is handling
 const mechanicLastReply = {} // Track when mechanic last replied
+const blockedNumbers = {} // Track permanently blocked numbers (jawir88 command)
 
 // 1 hour in milliseconds
 const MECHANIC_COOLDOWN = 60 * 60 * 1000 // 1 hour
@@ -245,6 +246,15 @@ exports.handler = async function(event, context) {
         }
       }
 
+      if (command === 'jawir88') {
+        blockedNumbers[customerPhone] = true
+        console.log('Number permanently blocked with jawir88 command:', customerPhone)
+        return {
+          statusCode: 200,
+          body: JSON.stringify({ status: 'number permanently blocked' })
+        }
+      }
+
       // Record when mechanic replied
       mechanicLastReply[customerPhone] = Date.now()
       console.log('Mechanic replied, bot paused for 1 hour')
@@ -267,6 +277,15 @@ exports.handler = async function(event, context) {
       return {
         statusCode: 200,
         body: JSON.stringify({ status: 'ignored', reason: 'empty' })
+      }
+    }
+
+    // Check if number is permanently blocked (jawir88 command)
+    if (blockedNumbers[customerPhone]) {
+      console.log('Number is permanently blocked, ignoring all messages')
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'blocked', reason: 'jawir88 command' })
       }
     }
 
