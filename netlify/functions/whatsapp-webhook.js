@@ -263,13 +263,14 @@ exports.handler = async function(event, context) {
       }
     }
 
-    // INSTANT RESPONSE: Location request
+    // INSTANT RESPONSE: Location request - ask them to wait
     if (isAskingLocation(customerMessage)) {
-      console.log('Location request detected, instant reply')
-      await sendFonteMessage(customerPhone, LOCATION_INFO, fonntToken)
+      console.log('Location request detected, asking to wait')
+      const waitMessage = 'Tunggu ya, nanti akan di-share lokasi nya 📍'
+      await sendFonteMessage(customerPhone, waitMessage, fonntToken)
       return {
         statusCode: 200,
-        body: JSON.stringify({ status: 'location sent' })
+        body: JSON.stringify({ status: 'location request - waiting for manual' })
       }
     }
 
