@@ -45,7 +45,6 @@ Minggu: 10.00 - 18.00
 const conversationHistory = {}
 const mechanicHandling = {} // Track which chats mechanic is handling
 const mechanicLastReply = {} // Track when mechanic last replied
-const pendingReplies = {} // Track delayed responses
 
 // 1 hour in milliseconds
 const MECHANIC_COOLDOWN = 60 * 60 * 1000 // 1 hour
@@ -193,13 +192,6 @@ exports.handler = async function(event, context) {
       mechanicLastReply[customerPhone] = Date.now()
       console.log('Mechanic replied, bot paused for 1 hour')
 
-      // Cancel any pending bot reply
-      if (pendingReplies[customerPhone]) {
-        clearTimeout(pendingReplies[customerPhone])
-        delete pendingReplies[customerPhone]
-        console.log('Cancelled pending bot reply')
-      }
-
       // Check if conversation ender - reduces cooldown to 5 minutes
       if (isConversationEnder(customerMessage)) {
         // Conversation ended, bot can resume after 5 minutes instead of 1 hour
@@ -292,23 +284,19 @@ exports.handler = async function(event, context) {
       }
     }
 
-    // For normal messages: Wait 2 minutes before AI responds
-    console.log('Normal message, waiting 2 minutes before AI response...')
+    // For normal messages: Respond immediately with AI
+    console.log('Normal message, generating AI response immediately...')
 
-    // Store pending reply
-    const replyId = `${customerPhone}_${Date.now()}`
-
-    // Schedule AI response after 2 minutes
-    pendingReplies[customerPhone] = setTimeout(async () => {
+    // Function to generate and send AI response
+    const sendAIResponse = async () => {
       try {
-        // Check again if mechanic took over during wait
+        // Check if mechanic took over
         if (mechanicHandling[customerPhone]) {
-          console.log('Mechanic took over during wait, cancelling AI response')
-          delete pendingReplies[customerPhone]
+          console.log('Mechanic took over, cancelling AI response')
           return
         }
 
-        console.log('2 minutes passed, generating AI response')
+        console.log('Generating AI response')
 
         // Initialize conversation history
         if (!conversationHistory[customerPhone]) {
@@ -369,19 +357,19 @@ exports.handler = async function(event, context) {
         console.log('Sending AI reply to:', customerPhone)
         await sendFonteMessage(customerPhone, aiReply, fonntToken)
 
-        delete pendingReplies[customerPhone]
-
       } catch (error) {
-        console.error('Error in delayed response:', error)
-        delete pendingReplies[customerPhone]
+        console.error('Error in AI response:', error)
       }
-    }, 2 * 60 * 1000) // 2 minutes
+    }
+
+    // Send AI response immediately (not delayed)
+    await sendAIResponse()
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        status: 'scheduled',
-        message: 'Will respond in 2 minutes if mechanic does not reply'
+        status: 'success',
+        message: 'AI response sent'
       })
     }
 
