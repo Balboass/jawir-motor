@@ -279,54 +279,58 @@ exports.handler = async function(event, context) {
       pengirim: body.pengirim
     })
 
+    // SAVE INCOMING MESSAGE IMMEDIATELY (for detection)
+    // This must happen BEFORE any filtering or responses
+    const { data: savedMessage } = await supabase.from('conversations').insert({
+      customer_phone: customerPhone,
+      customer_name: body.pushname || body.name || 'Unknown',
+      message: customerMessage,
+      bot_reply: null, // Will be updated later if bot responds
+      is_from_me: isFromMe
+    }).select().single()
+
+    const currentMessageId = savedMessage?.id
+    console.log('Saved incoming message with ID:', currentMessageId)
+
     // AUTOMATIC MANUAL HANDLING DETECTION
-    // Strategy: If customer sends multiple messages in short succession,
-    // check if bot responded to the PREVIOUS message. If not, mechanic must have handled it.
+    // Strategy: Check last 3 customer messages. If ANY of them don't have bot_reply,
+    // it means mechanic handled them manually. Auto-pause the bot.
 
-    const { data: lastBotMessage } = await supabase
+    const { data: recentMessages } = await supabase
       .from('conversations')
-      .select('created_at')
+      .select('*')
       .eq('customer_phone', customerPhone)
-      .not('bot_reply', 'is', null) // Get only messages where bot replied
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+      .limit(3)
 
-    if (lastBotMessage) {
-      const timeSinceLastBot = Date.now() - new Date(lastBotMessage.created_at).getTime()
+    if (recentMessages && recentMessages.length >= 2) {
+      // Check if there are messages without bot replies (excluding the current one we just saved)
+      const messagesWithoutBotReply = recentMessages.filter((msg, index) =>
+        index > 0 && // Skip the current message (first in array)
+        !msg.bot_reply &&
+        !msg.is_from_me
+      )
 
-      // If bot last responded more than 2 minutes ago, and customer is messaging now,
-      // it means someone else (mechanic) has been handling the conversation
-      if (timeSinceLastBot > 2 * 60 * 1000 && timeSinceLastBot < 10 * 60 * 1000) {
-        // Check if there are messages after the last bot response
-        const { count: messagesAfterBot } = await supabase
-          .from('conversations')
-          .select('*', { count: 'exact', head: true })
-          .eq('customer_phone', customerPhone)
-          .gt('created_at', lastBotMessage.created_at)
+      if (messagesWithoutBotReply.length > 0) {
+        console.log(`AUTO-DETECTED: Found ${messagesWithoutBotReply.length} messages without bot reply - mechanic must have handled them manually`)
 
-        // If there are 1+ messages after bot's last response, mechanic took over
-        if (messagesAfterBot >= 1) {
-          const cooldownUntil = new Date(Date.now() + 30 * 60 * 1000)
+        const cooldownUntil = new Date(Date.now() + 30 * 60 * 1000)
 
-          await supabase.from('bot_settings').upsert({
-            customer_phone: customerPhone,
-            cooldown_until: cooldownUntil.toISOString(),
-            last_manual_reply: new Date().toISOString(),
-            has_greeted: false
-          }, {
-            onConflict: 'customer_phone'
+        await supabase.from('bot_settings').upsert({
+          customer_phone: customerPhone,
+          cooldown_until: cooldownUntil.toISOString(),
+          last_manual_reply: new Date().toISOString(),
+          has_greeted: false
+        }, {
+          onConflict: 'customer_phone'
+        })
+
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            status: 'auto-paused - manual handling detected',
+            reason: `Found ${messagesWithoutBotReply.length} messages without bot reply`
           })
-
-          console.log(`AUTO-DETECTED: ${messagesAfterBot} messages after bot's last reply (${Math.round(timeSinceLastBot/1000/60)} min ago) - mechanic handling`)
-
-          return {
-            statusCode: 200,
-            body: JSON.stringify({
-              status: 'auto-paused - manual handling detected',
-              reason: `${messagesAfterBot} messages sent after bot stopped responding`
-            })
-          }
         }
       }
     }
@@ -678,16 +682,27 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
           has_greeted: true
         })
 
-        // Save conversation to database
-        await supabase.from('conversations').insert({
-          customer_phone: customerPhone,
-          customer_name: body.name || null,
-          message: customerMessage,
-          bot_reply: aiReply,
-          message_type: 'problem',
-          is_from_me: false
-        })
-        console.log('Conversation saved to database')
+        // UPDATE the conversation record with bot reply (don't insert new row)
+        if (currentMessageId) {
+          await supabase.from('conversations')
+            .update({
+              bot_reply: aiReply,
+              message_type: 'problem'
+            })
+            .eq('id', currentMessageId)
+          console.log('Updated conversation record with bot reply')
+        } else {
+          // Fallback: insert new record if we don't have the ID
+          await supabase.from('conversations').insert({
+            customer_phone: customerPhone,
+            customer_name: body.pushname || body.name || 'Unknown',
+            message: customerMessage,
+            bot_reply: aiReply,
+            message_type: 'problem',
+            is_from_me: false
+          })
+          console.log('Inserted new conversation record (fallback)')
+        }
 
       } catch (error) {
         console.error('Error in AI response:', error)
