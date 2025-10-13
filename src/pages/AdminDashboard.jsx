@@ -256,6 +256,12 @@ function AdminDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <button
+                onClick={() => navigate('/admin/prices')}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors font-semibold"
+              >
+                💰 Price Monitoring
+              </button>
+              <button
                 onClick={fetchAnalytics}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
