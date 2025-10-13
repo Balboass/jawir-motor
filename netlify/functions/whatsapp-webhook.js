@@ -91,6 +91,23 @@ function isUselessMessage(message) {
   return false
 }
 
+// Helper: Check if message is just a greeting (halo, hai, etc.)
+function isJustGreeting(message) {
+  const text = message.trim().toLowerCase()
+
+  // List of greetings
+  const greetings = [
+    'halo', 'hai', 'hello', 'hi', 'hey', 'hallo',
+    'assalamualaikum', 'salam', 'pagi', 'siang', 'sore', 'malam',
+    'selamat pagi', 'selamat siang', 'selamat sore', 'selamat malam',
+    'bang', 'mas', 'pak', 'bro', 'gan', 'om', 'kak',
+    'bang jawir', 'bang wir', 'wir', 'bang muhtarom', 'bang rom', 'rom'
+  ]
+
+  // Check if message is ONLY a greeting (no other content)
+  return greetings.some(greeting => text === greeting || text === `${greeting}!`)
+}
+
 // Helper: Check if message is just casual greeting (no motorcycle problem mentioned)
 // NOTE: This function is intentionally disabled - bot should respond to ALL greetings
 function isCasualGreeting(message) {
@@ -502,6 +519,13 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
           .single()
 
         const hasAlreadyGreeted = greetingCheck?.has_greeted === true
+
+        // If bot already greeted and customer just says "halo" again, ignore
+        // Bot should only respond once until customer explains their problem
+        if (hasAlreadyGreeted && isJustGreeting(customerMessage)) {
+          console.log('Customer sent another greeting after bot already greeted, ignoring')
+          return
+        }
 
         // If customer sends nonsense after being greeted, ignore it
         if (hasAlreadyGreeted && isUselessMessage(customerMessage)) {
