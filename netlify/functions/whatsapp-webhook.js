@@ -221,9 +221,16 @@ exports.handler = async function(event, context) {
     // Extract data
     const customerPhone = body.from || body.sender || body.number || body.phone
     const customerMessage = body.message || body.text
-    const isFromMe = body.fromMe === true || body.from_me === true
+    const isFromMe = body.fromMe === true || body.from_me === true || body.fromme === true
 
-    console.log('Extracted:', { customerPhone, customerMessage, isFromMe })
+    console.log('Extracted:', {
+      customerPhone,
+      customerMessage,
+      isFromMe,
+      rawFromMe: body.fromMe,
+      rawFrom_me: body.from_me,
+      rawFromme: body.fromme
+    })
 
     // Handle mechanic messages
     if (isFromMe) {
@@ -290,12 +297,22 @@ exports.handler = async function(event, context) {
         console.log('Mechanic replied, bot paused for 1 hour')
       }
 
-      await supabase.from('bot_settings').upsert({
-        customer_phone: customerPhone,
-        last_manual_reply: now.toISOString(),
-        cooldown_until: cooldownUntil.toISOString(),
-        has_greeted: false // Reset greeting flag when mechanic takes over
-      })
+      const { data: upsertResult, error: upsertError } = await supabase
+        .from('bot_settings')
+        .upsert({
+          customer_phone: customerPhone,
+          last_manual_reply: now.toISOString(),
+          cooldown_until: cooldownUntil.toISOString(),
+          has_greeted: false // Reset greeting flag when mechanic takes over
+        }, {
+          onConflict: 'customer_phone'
+        })
+
+      if (upsertError) {
+        console.error('Error updating cooldown:', upsertError)
+      } else {
+        console.log('Cooldown successfully set until:', cooldownUntil.toISOString())
+      }
 
       return {
         statusCode: 200,
@@ -360,6 +377,12 @@ exports.handler = async function(event, context) {
       const cooldownUntil = new Date(botSettings.cooldown_until)
       const now = new Date()
 
+      console.log('Cooldown check:', {
+        cooldownUntil: cooldownUntil.toISOString(),
+        now: now.toISOString(),
+        isActive: cooldownUntil > now
+      })
+
       if (cooldownUntil > now) {
         const minutesRemaining = Math.ceil((cooldownUntil - now) / 60000)
         console.log(`Bot paused, ${minutesRemaining} minutes remaining until bot can respond`)
@@ -377,6 +400,8 @@ exports.handler = async function(event, context) {
         }).eq('customer_phone', customerPhone)
         console.log('Cooldown expired, bot can respond again')
       }
+    } else {
+      console.log('No cooldown settings found for this customer')
     }
 
     // Filter useless messages
