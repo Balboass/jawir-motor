@@ -279,8 +279,43 @@ exports.handler = async function(event, context) {
       pengirim: body.pengirim
     })
 
-    // NOTE: Use the Bot Control web page (/admin/bot-control) to manually pause bot
-    // Fonnte doesn't send webhooks when you reply, so automatic detection is not possible
+    // AUTOMATIC MANUAL HANDLING DETECTION
+    // If customer messages 2+ times within 5 minutes and bot hasn't responded to latest,
+    // assume mechanic is handling manually
+    const { data: recentMessages } = await supabase
+      .from('conversations')
+      .select('created_at, bot_reply')
+      .eq('customer_phone', customerPhone)
+      .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    if (recentMessages && recentMessages.length >= 2) {
+      // Check if last message has no bot reply (meaning mechanic probably replied)
+      const lastMessage = recentMessages[0]
+      const hasNoBotReply = !lastMessage.bot_reply || lastMessage.bot_reply === null
+
+      if (hasNoBotReply) {
+        // Mechanic is handling manually - auto-pause bot for 30 minutes
+        const cooldownUntil = new Date(Date.now() + 30 * 60 * 1000)
+
+        await supabase.from('bot_settings').upsert({
+          customer_phone: customerPhone,
+          cooldown_until: cooldownUntil.toISOString(),
+          last_manual_reply: new Date().toISOString(),
+          has_greeted: false
+        }, {
+          onConflict: 'customer_phone'
+        })
+
+        console.log('AUTO-DETECTED: Mechanic handling manually - bot paused 30 min')
+
+        return {
+          statusCode: 200,
+          body: JSON.stringify({ status: 'auto-paused - manual handling detected' })
+        }
+      }
+    }
 
     // Handle mechanic messages (if Fonnte ever sends them)
     if (isFromMe) {
