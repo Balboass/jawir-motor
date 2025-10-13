@@ -271,6 +271,12 @@ exports.handler = async function(event, context) {
         }
       }
 
+      // Clear conversation history when mechanic takes over
+      if (conversationHistory[customerPhone]) {
+        delete conversationHistory[customerPhone]
+        console.log('Cleared conversation history - mechanic took over')
+      }
+
       // Record when mechanic replied in database
       const now = new Date()
       let cooldownUntil
@@ -287,7 +293,8 @@ exports.handler = async function(event, context) {
       await supabase.from('bot_settings').upsert({
         customer_phone: customerPhone,
         last_manual_reply: now.toISOString(),
-        cooldown_until: cooldownUntil.toISOString()
+        cooldown_until: cooldownUntil.toISOString(),
+        has_greeted: false // Reset greeting flag when mechanic takes over
       })
 
       return {
@@ -460,6 +467,21 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
       try {
         console.log('Generating AI response')
 
+        // Check if AI has already greeted this customer
+        const { data: greetingCheck } = await supabase
+          .from('bot_settings')
+          .select('has_greeted')
+          .eq('customer_phone', customerPhone)
+          .single()
+
+        const hasAlreadyGreeted = greetingCheck?.has_greeted === true
+
+        // If customer sends nonsense after being greeted, ignore it
+        if (hasAlreadyGreeted && isUselessMessage(customerMessage)) {
+          console.log('Customer sent nonsense after greeting, ignoring to prevent loop')
+          return
+        }
+
         // Initialize conversation history
         if (!conversationHistory[customerPhone]) {
           conversationHistory[customerPhone] = []
@@ -518,6 +540,12 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
         // Send reply (keep chat unread so mechanic can review)
         console.log('Sending AI reply to:', customerPhone)
         await sendFonteMessage(customerPhone, aiReply, fonntToken, true) // Keep unread
+
+        // Mark as greeted after first AI response
+        await supabase.from('bot_settings').upsert({
+          customer_phone: customerPhone,
+          has_greeted: true
+        })
 
         // Save conversation to database
         await supabase.from('conversations').insert({
