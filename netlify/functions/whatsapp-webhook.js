@@ -280,39 +280,46 @@ exports.handler = async function(event, context) {
     })
 
     // AUTOMATIC MANUAL HANDLING DETECTION
-    // If customer messages 2+ times within 5 minutes and bot hasn't responded to latest,
-    // assume mechanic is handling manually
+    // Check if there's a recent message from this customer that has no bot reply
+    // This means mechanic handled it manually
     const { data: recentMessages } = await supabase
       .from('conversations')
-      .select('created_at, bot_reply')
+      .select('created_at, bot_reply, message')
       .eq('customer_phone', customerPhone)
-      .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString())
+      .gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString()) // Last 10 minutes
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(10)
 
-    if (recentMessages && recentMessages.length >= 2) {
-      // Check if last message has no bot reply (meaning mechanic probably replied)
-      const lastMessage = recentMessages[0]
-      const hasNoBotReply = !lastMessage.bot_reply || lastMessage.bot_reply === null
+    if (recentMessages && recentMessages.length >= 1) {
+      // Check if ANY recent message has no bot reply
+      // This indicates mechanic took over the conversation
+      const messagesWithNoReply = recentMessages.filter(msg => !msg.bot_reply || msg.bot_reply === null)
 
-      if (hasNoBotReply) {
-        // Mechanic is handling manually - auto-pause bot for 30 minutes
-        const cooldownUntil = new Date(Date.now() + 30 * 60 * 1000)
+      if (messagesWithNoReply.length > 0) {
+        const timeSinceLastMessage = Date.now() - new Date(messagesWithNoReply[0].created_at).getTime()
 
-        await supabase.from('bot_settings').upsert({
-          customer_phone: customerPhone,
-          cooldown_until: cooldownUntil.toISOString(),
-          last_manual_reply: new Date().toISOString(),
-          has_greeted: false
-        }, {
-          onConflict: 'customer_phone'
-        })
+        // If there's a message with no reply within last 5 minutes, mechanic is handling it
+        if (timeSinceLastMessage < 5 * 60 * 1000) {
+          const cooldownUntil = new Date(Date.now() + 30 * 60 * 1000)
 
-        console.log('AUTO-DETECTED: Mechanic handling manually - bot paused 30 min')
+          await supabase.from('bot_settings').upsert({
+            customer_phone: customerPhone,
+            cooldown_until: cooldownUntil.toISOString(),
+            last_manual_reply: new Date().toISOString(),
+            has_greeted: false
+          }, {
+            onConflict: 'customer_phone'
+          })
 
-        return {
-          statusCode: 200,
-          body: JSON.stringify({ status: 'auto-paused - manual handling detected' })
+          console.log('AUTO-DETECTED: Mechanic handling manually - bot paused 30 min for:', customerPhone)
+
+          return {
+            statusCode: 200,
+            body: JSON.stringify({
+              status: 'auto-paused - manual handling detected',
+              unreplied_message: messagesWithNoReply[0].message
+            })
+          }
         }
       }
     }
