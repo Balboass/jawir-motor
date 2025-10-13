@@ -60,8 +60,8 @@ Minggu: 10.00 - 18.00
 // Store conversation state (in-memory cache for performance)
 const conversationHistory = {}
 
-// 1 hour in milliseconds
-const MECHANIC_COOLDOWN = 60 * 60 * 1000 // 1 hour
+// 30 minutes in milliseconds
+const MECHANIC_COOLDOWN = 30 * 60 * 1000 // 30 minutes
 
 // Helper: Check if message is useless
 function isUselessMessage(message) {
@@ -312,8 +312,8 @@ exports.handler = async function(event, context) {
         cooldownUntil = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
         console.log('Conversation ended, bot can resume in 5 minutes')
       } else {
-        cooldownUntil = new Date(Date.now() + MECHANIC_COOLDOWN) // 1 hour
-        console.log('Mechanic replied, bot paused for 1 hour')
+        cooldownUntil = new Date(Date.now() + MECHANIC_COOLDOWN) // 30 minutes
+        console.log('Mechanic replied, bot paused for 30 minutes')
       }
 
       const { data: upsertResult, error: upsertError } = await supabase

@@ -11,7 +11,7 @@ const supabase = createClient(
 function BotControl() {
   const navigate = useNavigate()
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [duration, setDuration] = useState(60) // minutes
+  const [duration, setDuration] = useState(30) // minutes (default 30 minutes)
   const [activeControls, setActiveControls] = useState([])
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
