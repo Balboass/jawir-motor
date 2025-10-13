@@ -423,36 +423,76 @@ function AdminDashboard() {
         {/* Recent Conversations */}
         <div className="bg-slate-800 rounded-xl p-6 shadow-xl border border-slate-700">
           <h3 className="text-xl font-bold text-white mb-4">Percakapan Terbaru</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="text-left py-3 px-4 text-gray-300 font-semibold">Waktu</th>
-                  <th className="text-left py-3 px-4 text-gray-300 font-semibold">Nama</th>
-                  <th className="text-left py-3 px-4 text-gray-300 font-semibold">Telepon</th>
-                  <th className="text-left py-3 px-4 text-gray-300 font-semibold">Pesan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentConversations.map((conv) => (
-                  <tr key={conv.id} className="border-b border-slate-700 hover:bg-slate-700/50">
-                    <td className="py-3 px-4 text-gray-400 text-sm">
-                      {new Date(conv.created_at).toLocaleString('id-ID', {
-                        day: '2-digit',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </td>
-                    <td className="py-3 px-4 text-white">{conv.customer_name || '-'}</td>
-                    <td className="py-3 px-4 text-gray-300">{conv.customer_phone}</td>
-                    <td className="py-3 px-4 text-gray-300 max-w-md truncate">
-                      {conv.message}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-6">
+            {recentConversations.map((conv) => (
+              <div key={conv.id} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                {/* Customer Info Header */}
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-600">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">
+                        {(conv.customer_name || 'U')[0].toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <div className="text-white font-semibold">{conv.customer_name || 'Unknown'}</div>
+                      <div className="text-gray-400 text-sm">{conv.customer_phone}</div>
+                    </div>
+                  </div>
+                  <div className="text-gray-400 text-sm">
+                    {new Date(conv.created_at).toLocaleString('id-ID', {
+                      day: '2-digit',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                </div>
+
+                {/* Chat Messages */}
+                <div className="space-y-3">
+                  {/* Customer Message */}
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-8 h-8 bg-cyan-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">👤</span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="bg-cyan-900/50 border border-cyan-700 rounded-lg p-3">
+                        <div className="text-cyan-300 text-xs font-semibold mb-1">Customer</div>
+                        <div className="text-white">{conv.message}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bot/Manual Reply */}
+                  {conv.bot_reply && (
+                    <div className="flex items-start space-x-2">
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                        conv.is_from_me ? 'bg-green-600' : 'bg-purple-600'
+                      }`}>
+                        <span className="text-white text-xs font-bold">
+                          {conv.is_from_me ? '👨‍🔧' : '🤖'}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <div className={`rounded-lg p-3 ${
+                          conv.is_from_me
+                            ? 'bg-green-900/50 border border-green-700'
+                            : 'bg-purple-900/50 border border-purple-700'
+                        }`}>
+                          <div className={`text-xs font-semibold mb-1 ${
+                            conv.is_from_me ? 'text-green-300' : 'text-purple-300'
+                          }`}>
+                            {conv.is_from_me ? 'Manual (Mechanic)' : 'Bot AI'}
+                          </div>
+                          <div className="text-white">{conv.bot_reply}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
