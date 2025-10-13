@@ -227,12 +227,42 @@ exports.handler = async function(event, context) {
       customerPhone,
       customerMessage,
       isFromMe,
-      rawFromMe: body.fromMe,
-      rawFrom_me: body.from_me,
-      rawFromme: body.fromme
+      device: body.device,
+      pengirim: body.pengirim
     })
 
-    // Handle mechanic messages
+    // WORKAROUND: Since Fonnte doesn't send webhooks when YOU reply manually,
+    // use "jawir99" command to pause bot for this specific customer
+    // When you want to handle manually, just send "jawir99" message to that customer
+    // The customer will see it briefly but it will pause the bot for 1 hour
+
+    if (customerMessage?.trim().toLowerCase() === 'jawir99') {
+      console.log('jawir99 command detected - pausing bot for 1 hour')
+
+      const now = new Date()
+      const cooldownUntil = new Date(Date.now() + MECHANIC_COOLDOWN) // 1 hour
+
+      await supabase.from('bot_settings').upsert({
+        customer_phone: customerPhone,
+        last_manual_reply: now.toISOString(),
+        cooldown_until: cooldownUntil.toISOString(),
+        has_greeted: false
+      }, {
+        onConflict: 'customer_phone'
+      })
+
+      console.log(`Bot paused for ${customerPhone} until ${cooldownUntil.toISOString()}`)
+
+      // Delete the command message from view if possible
+      // (Fonnte doesn't support this, so customer will see jawir99 briefly)
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'bot paused for 1 hour via jawir99' })
+      }
+    }
+
+    // Handle mechanic messages (if Fonnte ever sends them)
     if (isFromMe) {
       console.log('Message from mechanic detected')
 
