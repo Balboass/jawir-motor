@@ -22,6 +22,9 @@ function AdminDashboard() {
   const [messagesPerDay, setMessagesPerDay] = useState([])
   const [topProblems, setTopProblems] = useState([])
   const [recentConversations, setRecentConversations] = useState([])
+  const [peakHours, setPeakHours] = useState([])
+  const [peakDays, setPeakDays] = useState([])
+  const [priceAlerts, setPriceAlerts] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -136,6 +139,91 @@ function AdminDashboard() {
 
       setRecentConversations(recent || [])
 
+      // Fetch all conversations for time analysis
+      const { data: allConversations } = await supabase
+        .from('conversations')
+        .select('created_at, message, bot_reply')
+        .order('created_at', { ascending: false })
+        .limit(1000)
+
+      // Analyze peak hours (0-23)
+      const hourCounts = {}
+      allConversations?.forEach(conv => {
+        const hour = new Date(conv.created_at).getHours()
+        hourCounts[hour] = (hourCounts[hour] || 0) + 1
+      })
+
+      const hourData = Object.entries(hourCounts)
+        .map(([hour, count]) => ({
+          hour: `${hour.padStart(2, '0')}:00`,
+          messages: count
+        }))
+        .sort((a, b) => parseInt(a.hour) - parseInt(b.hour))
+
+      setPeakHours(hourData)
+
+      // Analyze peak days (0=Sunday, 6=Saturday)
+      const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+      const dayCounts = {}
+      allConversations?.forEach(conv => {
+        const day = new Date(conv.created_at).getDay()
+        const dayName = dayNames[day]
+        dayCounts[dayName] = (dayCounts[dayName] || 0) + 1
+      })
+
+      const dayData = dayNames.map(day => ({
+        day,
+        messages: dayCounts[day] || 0
+      }))
+
+      setPeakDays(dayData)
+
+      // Analyze price mentions for transparency
+      const priceRegex = /(?:rp|Rp|RP|harga|biaya|kena)\s*\.?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?)\s*(?:ribu|rb|k)?/gi
+      const priceMatches = []
+
+      allConversations?.forEach(conv => {
+        const text = `${conv.message} ${conv.bot_reply || ''}`
+        let match
+        while ((match = priceRegex.exec(text)) !== null) {
+          const priceStr = match[1].replace(/[.,]/g, '')
+          let price = parseInt(priceStr)
+
+          // Check if it's in thousands (ribu/rb/k)
+          if (match[0].toLowerCase().includes('ribu') ||
+              match[0].toLowerCase().includes('rb') ||
+              match[0].toLowerCase().includes('k')) {
+            price *= 1000
+          }
+
+          // Only track prices between 10k and 10M (reasonable service prices)
+          if (price >= 10000 && price <= 10000000) {
+            priceMatches.push({
+              price,
+              context: match[0],
+              date: new Date(conv.created_at).toLocaleDateString('id-ID'),
+              fullText: text.substring(Math.max(0, match.index - 50), Math.min(text.length, match.index + 100))
+            })
+          }
+        }
+      })
+
+      // Group by price ranges
+      const priceRanges = {
+        '10k-50k': priceMatches.filter(p => p.price >= 10000 && p.price < 50000).length,
+        '50k-100k': priceMatches.filter(p => p.price >= 50000 && p.price < 100000).length,
+        '100k-200k': priceMatches.filter(p => p.price >= 100000 && p.price < 200000).length,
+        '200k-500k': priceMatches.filter(p => p.price >= 200000 && p.price < 500000).length,
+        '500k+': priceMatches.filter(p => p.price >= 500000).length
+      }
+
+      const priceData = Object.entries(priceRanges).map(([range, count]) => ({
+        range,
+        count
+      })).filter(item => item.count > 0)
+
+      setPriceAlerts(priceData)
+
       setLoading(false)
     } catch (error) {
       console.error('Error fetching analytics:', error)
@@ -207,6 +295,72 @@ function AdminDashboard() {
             <div className="text-white text-3xl font-bold">{stats.blockedNumbers}</div>
           </div>
         </div>
+
+        {/* Peak Time Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Peak Hours */}
+          <div className="bg-slate-800 rounded-xl p-6 shadow-xl border border-slate-700">
+            <h3 className="text-xl font-bold text-white mb-4">📊 Jam Paling Ramai</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={peakHours}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                <XAxis dataKey="hour" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px' }}
+                  labelStyle={{ color: '#f1f5f9' }}
+                />
+                <Bar dataKey="messages" fill="#3b82f6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Peak Days */}
+          <div className="bg-slate-800 rounded-xl p-6 shadow-xl border border-slate-700">
+            <h3 className="text-xl font-bold text-white mb-4">📅 Hari Paling Ramai</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={peakDays}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
+                <XAxis dataKey="day" stroke="#94a3b8" />
+                <YAxis stroke="#94a3b8" />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px' }}
+                  labelStyle={{ color: '#f1f5f9' }}
+                />
+                <Bar dataKey="messages" fill="#06b6d4" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Price Transparency Section */}
+        {priceAlerts.length > 0 && (
+          <div className="bg-gradient-to-r from-amber-900 to-orange-900 rounded-xl p-6 shadow-xl border-2 border-amber-500 mb-8">
+            <div className="flex items-start space-x-4">
+              <div className="text-4xl">💰</div>
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold text-white mb-2">Transparansi Harga</h3>
+                <p className="text-amber-100 mb-4">
+                  Sistem mendeteksi harga yang disebutkan dalam percakapan. Gunakan ini untuk memastikan harga yang diberikan ke customer konsisten.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {priceAlerts.map((item, idx) => (
+                    <div key={idx} className="bg-slate-900/50 rounded-lg p-4 border border-amber-700">
+                      <div className="text-amber-300 text-sm font-semibold">{item.range}</div>
+                      <div className="text-white text-2xl font-bold">{item.count}x</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 bg-amber-950/50 rounded-lg p-4 border border-amber-800">
+                  <p className="text-amber-200 text-sm">
+                    💡 <strong>Tips Anti-Korupsi:</strong> Bandingkan harga ini dengan nota/struk yang sebenarnya.
+                    Jika ada perbedaan besar, bisa jadi ada ketidaksesuaian harga antara yang dikasih tau ke customer vs yang dibayar.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
