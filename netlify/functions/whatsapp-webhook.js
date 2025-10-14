@@ -663,8 +663,52 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
       }
     }
 
-    // For normal messages: Respond immediately with AI
-    console.log('Normal message, generating AI response immediately...')
+    // STRATEGIC DELAY: Wait 15 seconds before AI responds
+    // This gives mechanic time to see the message and reply manually
+    // If mechanic replies during this window, their webhook will arrive and block AI
+    console.log('⏱️ Waiting 15 seconds to give mechanic time to reply manually...')
+    await sleep(15000) // 15 seconds
+
+    // FINAL VERIFICATION: Check one more time if mechanic replied during the wait
+    const { data: finalCheck } = await supabase
+      .from('bot_settings')
+      .select('last_manual_reply, cooldown_until')
+      .eq('customer_phone', customerPhone)
+      .single()
+
+    // Check if cooldown was set during the 15-second wait
+    if (finalCheck?.cooldown_until) {
+      const cooldownTime = new Date(finalCheck.cooldown_until)
+      if (cooldownTime > new Date()) {
+        console.log('🛑 Mechanic replied during 15-second wait - CANCELLING AI response')
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            status: 'cancelled',
+            reason: 'mechanic took over during delay'
+          })
+        }
+      }
+    }
+
+    // Check if mechanic replied in the last 20 seconds (during our wait)
+    if (finalCheck?.last_manual_reply) {
+      const lastManualTime = new Date(finalCheck.last_manual_reply)
+      const secondsAgo = Math.round((Date.now() - lastManualTime.getTime()) / 1000)
+      if (secondsAgo < 20) {
+        console.log(`🛑 Mechanic replied ${secondsAgo} seconds ago (during wait) - CANCELLING AI response`)
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            status: 'cancelled',
+            reason: 'mechanic replied during delay',
+            seconds_ago: secondsAgo
+          })
+        }
+      }
+    }
+
+    console.log('✅ 15-second wait complete - No mechanic intervention - AI will respond')
 
     // Function to generate and send AI response
     const sendAIResponse = async () => {
