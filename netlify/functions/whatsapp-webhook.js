@@ -269,15 +269,91 @@ exports.handler = async function(event, context) {
     // Extract data
     const customerPhone = body.from || body.sender || body.number || body.phone
     const customerMessage = body.message || body.text
-    const isFromMe = body.fromMe === true || body.from_me === true || body.fromme === true
+
+    // Better detection: Check multiple fields to detect if this is YOUR outgoing message
+    const isFromMe = body.fromMe === true ||
+                     body.from_me === true ||
+                     body.fromme === true ||
+                     body.direction === 'outgoing' ||
+                     body.type === 'outgoing' ||
+                     // If there's NO sender field, it's likely your outgoing message
+                     (!body.sender && !body.from)
 
     console.log('Extracted:', {
       customerPhone,
       customerMessage,
       isFromMe,
       device: body.device,
-      pengirim: body.pengirim
+      sender: body.sender,
+      from: body.from,
+      direction: body.direction,
+      type: body.type,
+      pengirim: body.pengirim,
+      fullBody: JSON.stringify(body, null, 2)
     })
+
+    // Handle OUTGOING MESSAGES (messages from mechanic)
+    if (isFromMe) {
+      console.log('⚠️ Outgoing message detected (sent by mechanic)')
+
+      // Check for bot commands
+      const command = customerMessage?.trim().toLowerCase()
+
+      if (command === '/bot on') {
+        await supabase.from('bot_settings').upsert({
+          customer_phone: customerPhone,
+          bot_disabled: false,
+          last_manual_reply: null,
+          cooldown_until: null
+        }, { onConflict: 'customer_phone' })
+        console.log('Bot enabled immediately for:', customerPhone)
+        return {
+          statusCode: 200,
+          body: JSON.stringify({ status: 'bot enabled' })
+        }
+      }
+
+      if (command === '/bot off') {
+        await supabase.from('bot_settings').upsert({
+          customer_phone: customerPhone,
+          bot_disabled: true
+        }, { onConflict: 'customer_phone' })
+        console.log('Bot disabled permanently for:', customerPhone)
+        return {
+          statusCode: 200,
+          body: JSON.stringify({ status: 'bot disabled' })
+        }
+      }
+
+      if (command === 'jawir88') {
+        // Block number in database
+        await supabase.from('blocked_numbers').upsert({
+          phone_number: customerPhone,
+          blocked_by: 'mechanic'
+        }, { onConflict: 'phone_number' })
+        console.log('Number permanently blocked with jawir88 command:', customerPhone)
+        return {
+          statusCode: 200,
+          body: JSON.stringify({ status: 'number permanently blocked' })
+        }
+      }
+
+      // For all other outgoing messages: IGNORE (don't let bot respond to them)
+      console.log('Ignoring outgoing message (not a command)')
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'ignored - outgoing message' })
+      }
+    }
+
+    // Additional safety: Ignore if message is empty or missing
+    if (!customerMessage || !customerMessage.trim()) {
+      console.log('⚠️ Empty message - IGNORING')
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ status: 'ignored - empty message' })
+      }
+    }
 
     // SAVE INCOMING MESSAGE IMMEDIATELY (for detection)
     // This must happen BEFORE any filtering or responses
@@ -335,93 +411,6 @@ exports.handler = async function(event, context) {
       }
     }
 
-    // Handle mechanic messages (if Fonnte ever sends them)
-    if (isFromMe) {
-      console.log('Message from mechanic detected')
-
-      // Check for bot commands
-      const command = customerMessage?.trim().toLowerCase()
-
-      if (command === '/bot on') {
-        await supabase.from('bot_settings').upsert({
-          customer_phone: customerPhone,
-          bot_disabled: false,
-          last_manual_reply: null,
-          cooldown_until: null
-        })
-        console.log('Bot enabled immediately for:', customerPhone)
-        return {
-          statusCode: 200,
-          body: JSON.stringify({ status: 'bot enabled' })
-        }
-      }
-
-      if (command === '/bot off') {
-        await supabase.from('bot_settings').upsert({
-          customer_phone: customerPhone,
-          bot_disabled: true
-        })
-        console.log('Bot disabled permanently for:', customerPhone)
-        return {
-          statusCode: 200,
-          body: JSON.stringify({ status: 'bot disabled' })
-        }
-      }
-
-      if (command === 'jawir88') {
-        // Block number in database
-        await supabase.from('blocked_numbers').upsert({
-          phone_number: customerPhone,
-          blocked_by: 'mechanic'
-        })
-        console.log('Number permanently blocked with jawir88 command:', customerPhone)
-        return {
-          statusCode: 200,
-          body: JSON.stringify({ status: 'number permanently blocked' })
-        }
-      }
-
-      // Clear conversation history when mechanic takes over
-      if (conversationHistory[customerPhone]) {
-        delete conversationHistory[customerPhone]
-        console.log('Cleared conversation history - mechanic took over')
-      }
-
-      // Record when mechanic replied in database
-      const now = new Date()
-      let cooldownUntil
-
-      // Check if conversation ender - reduces cooldown to 5 minutes
-      if (isConversationEnder(customerMessage)) {
-        cooldownUntil = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
-        console.log('Conversation ended, bot can resume in 5 minutes')
-      } else {
-        cooldownUntil = new Date(Date.now() + MECHANIC_COOLDOWN) // 30 minutes
-        console.log('Mechanic replied, bot paused for 30 minutes')
-      }
-
-      const { data: upsertResult, error: upsertError } = await supabase
-        .from('bot_settings')
-        .upsert({
-          customer_phone: customerPhone,
-          last_manual_reply: now.toISOString(),
-          cooldown_until: cooldownUntil.toISOString(),
-          has_greeted: false // Reset greeting flag when mechanic takes over
-        }, {
-          onConflict: 'customer_phone'
-        })
-
-      if (upsertError) {
-        console.error('Error updating cooldown:', upsertError)
-      } else {
-        console.log('Cooldown successfully set until:', cooldownUntil.toISOString())
-      }
-
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ status: 'mechanic handling' })
-      }
-    }
 
     // Ignore empty messages
     if (!customerMessage || !customerMessage.trim()) {
