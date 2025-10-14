@@ -338,10 +338,10 @@ exports.handler = async function(event, context) {
         }
       }
 
-      // For all other outgoing messages: AUTO-PAUSE BOT for 3 hours
-      console.log('🔧 Mechanic sent manual message - Auto-pausing bot for 3 hours')
+      // For all other outgoing messages: AUTO-PAUSE BOT for 1 hour
+      console.log('🔧 Mechanic sent manual message - Auto-pausing bot for 1 hour')
 
-      const cooldownUntil = new Date(Date.now() + 3 * 60 * 60 * 1000) // 3 hours
+      const cooldownUntil = new Date(Date.now() + 1 * 60 * 60 * 1000) // 1 hour
 
       await supabase.from('bot_settings').upsert({
         customer_phone: customerPhone,
@@ -594,9 +594,11 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
       }
     }
 
-    // FINAL CHECK: Did mechanic reply manually in the last 5 minutes?
-    // This catches race conditions where webhooks arrive out of order
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+    // 3-LAYER SMART PROTECTION: Prevent AI from responding after manual reply
+    // This catches race conditions and ensures NO conflicts
+
+    const oneMinuteAgo = new Date(Date.now() - 1 * 60 * 1000)   // Layer 1: Critical window
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000) // Layer 2: Context check
 
     const { data: recentManualReply } = await supabase
       .from('bot_settings')
@@ -606,17 +608,46 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
 
     if (recentManualReply?.last_manual_reply) {
       const lastManualTime = new Date(recentManualReply.last_manual_reply)
-      if (lastManualTime > fiveMinutesAgo) {
-        const secondsAgo = Math.round((Date.now() - lastManualTime.getTime()) / 1000)
-        console.log(`⏸️ Mechanic replied ${secondsAgo} seconds ago - Skipping AI response to avoid conflict`)
+      const secondsAgo = Math.round((Date.now() - lastManualTime.getTime()) / 1000)
+      const minutesAgo = Math.round(secondsAgo / 60)
+
+      // LAYER 1: Critical race condition protection (< 1 minute)
+      if (lastManualTime > oneMinuteAgo) {
+        console.log(`🚨 LAYER 1: Mechanic replied ${secondsAgo} seconds ago - BLOCKING AI to prevent race condition`)
         return {
           statusCode: 200,
           body: JSON.stringify({
-            status: 'skipped',
-            reason: 'mechanic replied recently',
+            status: 'blocked',
+            layer: 1,
+            reason: 'race condition protection',
             seconds_ago: secondsAgo
           })
         }
+      }
+
+      // LAYER 2: Smart context check (1-5 minutes)
+      if (lastManualTime > fiveMinutesAgo) {
+        // Check if customer message is just an acknowledgment
+        if (isUselessMessage(customerMessage) || isConversationEnder(customerMessage)) {
+          console.log(`💡 LAYER 2: Mechanic replied ${minutesAgo} min ago + customer sent acknowledgment - BLOCKING AI`)
+          return {
+            statusCode: 200,
+            body: JSON.stringify({
+              status: 'blocked',
+              layer: 2,
+              reason: 'conversation ending detected',
+              minutes_ago: minutesAgo
+            })
+          }
+        } else {
+          // New question - let AI respond
+          console.log(`✅ LAYER 2: Mechanic replied ${minutesAgo} min ago BUT customer asking new question - AI will respond`)
+        }
+      }
+
+      // LAYER 3: After 5 minutes - AI responds normally
+      if (minutesAgo >= 5) {
+        console.log(`✅ LAYER 3: Mechanic replied ${minutesAgo} min ago - AI can respond normally`)
       }
     }
 
