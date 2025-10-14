@@ -594,6 +594,32 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
       }
     }
 
+    // FINAL CHECK: Did mechanic reply manually in the last 5 minutes?
+    // This catches race conditions where webhooks arrive out of order
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+
+    const { data: recentManualReply } = await supabase
+      .from('bot_settings')
+      .select('last_manual_reply')
+      .eq('customer_phone', customerPhone)
+      .single()
+
+    if (recentManualReply?.last_manual_reply) {
+      const lastManualTime = new Date(recentManualReply.last_manual_reply)
+      if (lastManualTime > fiveMinutesAgo) {
+        const secondsAgo = Math.round((Date.now() - lastManualTime.getTime()) / 1000)
+        console.log(`⏸️ Mechanic replied ${secondsAgo} seconds ago - Skipping AI response to avoid conflict`)
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            status: 'skipped',
+            reason: 'mechanic replied recently',
+            seconds_ago: secondsAgo
+          })
+        }
+      }
+    }
+
     // For normal messages: Respond immediately with AI
     console.log('Normal message, generating AI response immediately...')
 
