@@ -663,11 +663,11 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
       }
     }
 
-    // STRATEGIC DELAY: Wait 15 seconds before AI responds
-    // This gives mechanic time to see the message and reply manually
+    // STRATEGIC DELAY: Wait 1 MINUTE before AI responds
+    // This gives mechanic plenty of time to see the message and reply manually
     // If mechanic replies during this window, their webhook will arrive and block AI
-    console.log('⏱️ Waiting 15 seconds to give mechanic time to reply manually...')
-    await sleep(15000) // 15 seconds
+    console.log('⏱️ Waiting 1 minute to give mechanic time to reply manually...')
+    await sleep(60000) // 60 seconds (1 minute)
 
     // FINAL VERIFICATION: Check one more time if mechanic replied during the wait
     const { data: finalCheck } = await supabase
@@ -691,11 +691,11 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
       }
     }
 
-    // Check if mechanic replied in the last 20 seconds (during our wait)
+    // Check if mechanic replied in the last 70 seconds (during our wait + buffer)
     if (finalCheck?.last_manual_reply) {
       const lastManualTime = new Date(finalCheck.last_manual_reply)
       const secondsAgo = Math.round((Date.now() - lastManualTime.getTime()) / 1000)
-      if (secondsAgo < 20) {
+      if (secondsAgo < 70) {
         console.log(`🛑 Mechanic replied ${secondsAgo} seconds ago (during wait) - CANCELLING AI response`)
         return {
           statusCode: 200,
@@ -708,7 +708,7 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
       }
     }
 
-    console.log('✅ 15-second wait complete - No mechanic intervention - AI will respond')
+    console.log('✅ 1-minute wait complete - No mechanic intervention - AI will respond')
 
     // Function to generate and send AI response
     const sendAIResponse = async () => {
