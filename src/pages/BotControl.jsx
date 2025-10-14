@@ -13,6 +13,7 @@ function BotControl() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [duration, setDuration] = useState(30) // minutes (default 30 minutes)
   const [activeControls, setActiveControls] = useState([])
+  const [blockedNumbers, setBlockedNumbers] = useState([])
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -24,6 +25,7 @@ function BotControl() {
     }
 
     fetchActiveControls()
+    fetchBlockedNumbers()
   }, [navigate])
 
   const fetchActiveControls = async () => {
@@ -42,6 +44,19 @@ function BotControl() {
       setActiveControls(active)
     } catch (error) {
       console.error('Error fetching controls:', error)
+    }
+  }
+
+  const fetchBlockedNumbers = async () => {
+    try {
+      const { data } = await supabase
+        .from('blocked_numbers')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      setBlockedNumbers(data || [])
+    } catch (error) {
+      console.error('Error fetching blocked numbers:', error)
     }
   }
 
@@ -111,6 +126,63 @@ function BotControl() {
     }
   }
 
+  const blockPermanently = async () => {
+    if (!phoneNumber.trim()) {
+      setMessage('❌ Masukkan nomor telepon!')
+      return
+    }
+
+    setLoading(true)
+    setMessage('')
+
+    try {
+      // Format phone number
+      let formattedPhone = phoneNumber.replace(/[\s\-\+]/g, '')
+      if (formattedPhone.startsWith('0')) {
+        formattedPhone = '62' + formattedPhone.substring(1)
+      }
+
+      const { error } = await supabase
+        .from('blocked_numbers')
+        .upsert({
+          phone_number: formattedPhone,
+          blocked_by: 'admin'
+        }, {
+          onConflict: 'phone_number'
+        })
+
+      if (error) {
+        setMessage(`❌ Error: ${error.message}`)
+      } else {
+        setMessage(`✅ Nomor ${formattedPhone} diblokir permanen`)
+        setPhoneNumber('')
+        fetchBlockedNumbers()
+      }
+    } catch (error) {
+      setMessage(`❌ Error: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const unblockNumber = async (phone) => {
+    try {
+      const { error } = await supabase
+        .from('blocked_numbers')
+        .delete()
+        .eq('phone_number', phone)
+
+      if (error) {
+        setMessage(`❌ Error: ${error.message}`)
+      } else {
+        setMessage(`✅ Nomor ${phone} dibuka kembali`)
+        fetchBlockedNumbers()
+      }
+    } catch (error) {
+      setMessage(`❌ Error: ${error.message}`)
+    }
+  }
+
   const formatTimeRemaining = (cooldownUntil) => {
     const now = new Date()
     const until = new Date(cooldownUntil)
@@ -143,7 +215,10 @@ function BotControl() {
                 ← Dashboard
               </button>
               <button
-                onClick={fetchActiveControls}
+                onClick={() => {
+                  fetchActiveControls()
+                  fetchBlockedNumbers()
+                }}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
                 🔄 Refresh
@@ -193,13 +268,23 @@ function BotControl() {
             </div>
           </div>
 
-          <button
-            onClick={pauseBot}
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-orange-700 hover:to-red-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Processing...' : '⏸️ Jeda Bot'}
-          </button>
+          <div className="grid md:grid-cols-2 gap-4">
+            <button
+              onClick={pauseBot}
+              disabled={loading}
+              className="bg-gradient-to-r from-orange-600 to-red-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-orange-700 hover:to-red-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Processing...' : '⏸️ Jeda Bot'}
+            </button>
+
+            <button
+              onClick={blockPermanently}
+              disabled={loading}
+              className="bg-gradient-to-r from-red-700 to-red-900 text-white font-semibold py-3 px-4 rounded-lg hover:from-red-800 hover:to-red-950 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Processing...' : '🚫 Blokir Permanen'}
+            </button>
+          </div>
 
           {message && (
             <div className={`mt-4 p-4 rounded-lg ${
@@ -219,11 +304,10 @@ function BotControl() {
             <div className="flex-1">
               <h3 className="text-xl font-bold text-white mb-2">Cara Menggunakan</h3>
               <ul className="text-blue-100 space-y-2 text-sm">
-                <li>1️⃣ <strong>Masukkan nomor telepon customer</strong> yang ingin dijeda botnya</li>
-                <li>2️⃣ <strong>Pilih durasi</strong> berapa lama bot dijeda (15 menit - 24 jam)</li>
-                <li>3️⃣ <strong>Klik "Jeda Bot"</strong> - Bot tidak akan merespon customer tersebut</li>
-                <li>4️⃣ <strong>Anda handle manual</strong> via WhatsApp seperti biasa</li>
-                <li>5️⃣ <strong>Setelah selesai</strong>, bot otomatis aktif lagi sesuai durasi yang dipilih</li>
+                <li>⏸️ <strong>Jeda Sementara:</strong> Pilih durasi (15 menit - 24 jam), klik "Jeda Bot" - Bot akan otomatis aktif lagi setelah waktu habis</li>
+                <li>🚫 <strong>Blokir Permanen:</strong> Klik "Blokir Permanen" - Bot tidak akan pernah merespon nomor tersebut sampai Anda buka blokirnya</li>
+                <li>🔓 <strong>Buka Blokir:</strong> Lihat daftar nomor yang diblokir di bawah, klik "Buka Blokir" untuk mengaktifkan bot lagi</li>
+                <li>📝 <strong>Catatan:</strong> Customer juga bisa ketik "jawir88" untuk menonaktifkan bot sendiri</li>
               </ul>
             </div>
           </div>
@@ -276,6 +360,70 @@ function BotControl() {
                           className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
                         >
                           ▶️ Resume
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Permanently Blocked Numbers */}
+        <div className="bg-slate-800 rounded-xl shadow-xl border border-slate-700 mt-8">
+          <div className="p-6 border-b border-slate-700">
+            <h3 className="text-xl font-bold text-white">Nomor yang Diblokir Permanen</h3>
+            <p className="text-gray-400 text-sm mt-1">
+              Total: {blockedNumbers.length} nomor
+            </p>
+          </div>
+
+          {blockedNumbers.length === 0 ? (
+            <div className="p-12 text-center text-gray-400">
+              Tidak ada nomor yang diblokir permanen
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left py-3 px-4 text-gray-300 font-semibold">Nomor Telepon</th>
+                    <th className="text-left py-3 px-4 text-gray-300 font-semibold">Diblokir Oleh</th>
+                    <th className="text-left py-3 px-4 text-gray-300 font-semibold">Tanggal Blokir</th>
+                    <th className="text-left py-3 px-4 text-gray-300 font-semibold">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {blockedNumbers.map((blocked) => (
+                    <tr key={blocked.phone_number} className="border-b border-slate-700 hover:bg-slate-700/50">
+                      <td className="py-3 px-4 text-white font-semibold">
+                        {blocked.phone_number}
+                      </td>
+                      <td className="py-3 px-4 text-gray-400">
+                        {blocked.blocked_by === 'admin' ? '👨‍💼 Admin' :
+                         blocked.blocked_by === 'mechanic' ? '👨‍🔧 Mechanic' :
+                         '👤 Customer'}
+                      </td>
+                      <td className="py-3 px-4 text-gray-400 text-sm">
+                        {new Date(blocked.created_at).toLocaleString('id-ID', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </td>
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={() => {
+                            if (confirm(`Yakin ingin membuka blokir untuk ${blocked.phone_number}?`)) {
+                              unblockNumber(blocked.phone_number)
+                            }
+                          }}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                        >
+                          🔓 Buka Blokir
                         </button>
                       </td>
                     </tr>
