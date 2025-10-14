@@ -338,11 +338,29 @@ exports.handler = async function(event, context) {
         }
       }
 
-      // For all other outgoing messages: IGNORE (don't let bot respond to them)
-      console.log('Ignoring outgoing message (not a command)')
+      // For all other outgoing messages: AUTO-PAUSE BOT for 30 minutes
+      console.log('🔧 Mechanic sent manual message - Auto-pausing bot for 30 minutes')
+
+      const cooldownUntil = new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+
+      await supabase.from('bot_settings').upsert({
+        customer_phone: customerPhone,
+        cooldown_until: cooldownUntil.toISOString(),
+        last_manual_reply: new Date().toISOString(),
+        has_greeted: false // Reset greeting flag
+      }, {
+        onConflict: 'customer_phone'
+      })
+
+      console.log(`✅ Bot auto-paused for ${customerPhone} until ${cooldownUntil.toLocaleString('id-ID')}`)
+
       return {
         statusCode: 200,
-        body: JSON.stringify({ status: 'ignored - outgoing message' })
+        body: JSON.stringify({
+          status: 'bot auto-paused',
+          reason: 'mechanic sent manual message',
+          cooldown_until: cooldownUntil.toISOString()
+        })
       }
     }
 
