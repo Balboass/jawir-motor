@@ -338,10 +338,10 @@ exports.handler = async function(event, context) {
         }
       }
 
-      // For all other outgoing messages: AUTO-PAUSE BOT for 30 minutes
-      console.log('🔧 Mechanic sent manual message - Auto-pausing bot for 30 minutes')
+      // For all other outgoing messages: AUTO-PAUSE BOT for 3 hours
+      console.log('🔧 Mechanic sent manual message - Auto-pausing bot for 3 hours')
 
-      const cooldownUntil = new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+      const cooldownUntil = new Date(Date.now() + 3 * 60 * 60 * 1000) // 3 hours
 
       await supabase.from('bot_settings').upsert({
         customer_phone: customerPhone,
