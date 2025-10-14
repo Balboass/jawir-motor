@@ -49,14 +49,28 @@ function BotControl() {
 
   const fetchBlockedNumbers = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('blocked_numbers')
         .select('*')
-        .order('created_at', { ascending: false })
 
-      setBlockedNumbers(data || [])
+      if (error) {
+        console.error('Supabase error fetching blocked numbers:', error)
+        setMessage(`❌ Error loading blocked numbers: ${error.message}`)
+        return
+      }
+
+      console.log('Blocked numbers fetched:', data)
+
+      // Sort by created_at if it exists, otherwise just show all
+      const sortedData = data?.sort((a, b) => {
+        if (!a.created_at || !b.created_at) return 0
+        return new Date(b.created_at) - new Date(a.created_at)
+      }) || []
+
+      setBlockedNumbers(sortedData)
     } catch (error) {
       console.error('Error fetching blocked numbers:', error)
+      setMessage(`❌ Error: ${error.message}`)
     }
   }
 
@@ -406,13 +420,13 @@ function BotControl() {
                          '👤 Customer'}
                       </td>
                       <td className="py-3 px-4 text-gray-400 text-sm">
-                        {new Date(blocked.created_at).toLocaleString('id-ID', {
+                        {blocked.created_at ? new Date(blocked.created_at).toLocaleString('id-ID', {
                           day: '2-digit',
                           month: 'short',
                           year: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit'
-                        })}
+                        }) : '-'}
                       </td>
                       <td className="py-3 px-4">
                         <button
