@@ -595,10 +595,12 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
     }
 
     // 3-LAYER SMART PROTECTION: Prevent AI from responding after manual reply
-    // This catches race conditions and ensures NO conflicts
+    // Layer 1 = Race condition backup (< 1 minute)
+    // Layer 2 = Smart acknowledgment detection (1-60 minutes)
+    // Layer 3 = After 1 hour, AI resumes normally
 
-    const oneMinuteAgo = new Date(Date.now() - 1 * 60 * 1000)   // Layer 1: Critical window
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000) // Layer 2: Context check
+    const oneMinuteAgo = new Date(Date.now() - 1 * 60 * 1000)      // Layer 1
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)       // Layer 2 & 3
 
     const { data: recentManualReply } = await supabase
       .from('bot_settings')
@@ -612,8 +614,9 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
       const minutesAgo = Math.round(secondsAgo / 60)
 
       // LAYER 1: Critical race condition protection (< 1 minute)
+      // Backup check in case outgoing webhook didn't set cooldown yet
       if (lastManualTime > oneMinuteAgo) {
-        console.log(`🚨 LAYER 1: Mechanic replied ${secondsAgo} seconds ago - BLOCKING AI to prevent race condition`)
+        console.log(`🚨 LAYER 1: Mechanic replied ${secondsAgo} seconds ago - BLOCKING AI (race condition backup)`)
         return {
           statusCode: 200,
           body: JSON.stringify({
@@ -625,9 +628,9 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
         }
       }
 
-      // LAYER 2: Smart context check (1-5 minutes)
-      if (lastManualTime > fiveMinutesAgo) {
-        // Check if customer message is just an acknowledgment
+      // LAYER 2: Within 1 hour - check if conversation ending
+      // If customer just says "ok/thanks", don't respond
+      if (lastManualTime > oneHourAgo) {
         if (isUselessMessage(customerMessage) || isConversationEnder(customerMessage)) {
           console.log(`💡 LAYER 2: Mechanic replied ${minutesAgo} min ago + customer sent acknowledgment - BLOCKING AI`)
           return {
@@ -640,14 +643,23 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
             })
           }
         } else {
-          // New question - let AI respond
-          console.log(`✅ LAYER 2: Mechanic replied ${minutesAgo} min ago BUT customer asking new question - AI will respond`)
+          // New question within 1 hour - still block (mechanic is handling)
+          console.log(`⏸️ LAYER 2: Mechanic replied ${minutesAgo} min ago - Still within 1-hour window, BLOCKING AI`)
+          return {
+            statusCode: 200,
+            body: JSON.stringify({
+              status: 'blocked',
+              layer: 2,
+              reason: 'within 1-hour manual handling window',
+              minutes_ago: minutesAgo
+            })
+          }
         }
       }
 
-      // LAYER 3: After 5 minutes - AI responds normally
-      if (minutesAgo >= 5) {
-        console.log(`✅ LAYER 3: Mechanic replied ${minutesAgo} min ago - AI can respond normally`)
+      // LAYER 3: After 1 hour - AI resumes normally
+      if (minutesAgo >= 60) {
+        console.log(`✅ LAYER 3: Mechanic replied ${minutesAgo} min ago (>1 hour) - AI resumes normally`)
       }
     }
 
