@@ -676,11 +676,11 @@ _*Catatan:* Kadang hari Jumat buka juga, mohon tunggu balasan manual untuk konfi
       .eq('customer_phone', customerPhone)
       .single()
 
-    // Check if cooldown was set during the 15-second wait
+    // Check if cooldown was set during the 1-minute wait
     if (finalCheck?.cooldown_until) {
       const cooldownTime = new Date(finalCheck.cooldown_until)
       if (cooldownTime > new Date()) {
-        console.log('🛑 Mechanic replied during 15-second wait - CANCELLING AI response')
+        console.log('🛑 Mechanic replied during 1-minute wait - CANCELLING AI response')
         return {
           statusCode: 200,
           body: JSON.stringify({
